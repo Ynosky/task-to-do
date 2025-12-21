@@ -18,7 +18,7 @@ struct DoView: View {
     @State private var showingError = false
     
     // 選択された日付の親タスクを取得
-    private var parentTasks: [TaskItem] {
+    private func getParentTasks() -> [TaskItem] {
         do {
             return try viewModel.fetchParentTasks(for: viewModel.selectedDate)
         } catch {
@@ -27,7 +27,7 @@ struct DoView: View {
     }
     
     // 選択中の親タスクの子タスク
-    private var subTasks: [TaskItem] {
+    private func getSubTasks() -> [TaskItem] {
         viewModel.getSubTasks(for: viewModel.selectedParentTask)
     }
     
@@ -40,22 +40,21 @@ struct DoView: View {
                 
                 VStack(spacing: 0) {
                     // 上部カード（Focus Area）
+                    let parentTasks = getParentTasks()
                     DoTopCard(
                         parentTasks: parentTasks,
                         selectedParentTask: $viewModel.selectedParentTask,
                         viewModel: viewModel,
                         onBack: {
                             // 戻るボタンのアクション
-                        },
-                        onExtend: {
-                            print("時間を延長しました")
                         }
                     )
-                    .frame(height: geometry.size.height / 3)
-                    .padding(.horizontal, 16)
+                    .frame(height: geometry.size.height / 3 * 1.25)
+                    .padding(.horizontal, 20)
                     .padding(.top, 16)
                     
                     // 下部カード（Task List）
+                    let subTasks = getSubTasks()
                     DoBottomCard(
                         subTasks: subTasks,
                         selectedParentTask: viewModel.selectedParentTask,
@@ -99,22 +98,16 @@ struct DoView: View {
         .onAppear {
             viewModel.modelContext = modelContext
             refreshSchedule()
-            if viewModel.selectedParentTask == nil && !parentTasks.isEmpty {
-                viewModel.selectedParentTask = parentTasks.first
+            let tasks = getParentTasks()
+            if viewModel.selectedParentTask == nil && !tasks.isEmpty {
+                viewModel.selectedParentTask = tasks.first
             }
         }
         .onChange(of: viewModel.selectedDate) { _, _ in
             refreshSchedule()
-            if viewModel.selectedParentTask == nil && !parentTasks.isEmpty {
-                viewModel.selectedParentTask = parentTasks.first
-            }
-        }
-        .onChange(of: parentTasks) { _, newTasks in
-            if viewModel.selectedParentTask == nil && !newTasks.isEmpty {
-                viewModel.selectedParentTask = newTasks.first
-            } else if let selected = viewModel.selectedParentTask,
-                      !newTasks.contains(where: { $0.id == selected.id }) {
-                viewModel.selectedParentTask = newTasks.first
+            let tasks = getParentTasks()
+            if viewModel.selectedParentTask == nil && !tasks.isEmpty {
+                viewModel.selectedParentTask = tasks.first
             }
         }
     }

@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftData
+import SwiftUI
 import Observation
 
 /// タスク管理のコアロジックを担当するViewModel
@@ -17,20 +18,56 @@ final class TaskViewModel {
     var selectedDate: Date = Date()
     var selectedTab: Int = 0 // 0: Plan, 1: Do, 2: Stats, 3: Settings
     
+    // 現在表示中の親タスクリスト（Viewのデータソース）
+    var currentParentTasks: [TaskItem] = []
+    
+    // データ更新のトリガー（Viewの再計算を促すため）
+    var refreshTrigger: UUID = UUID()
+    
     // 日付ごとの開始時間を保存（日付の文字列をキーとして使用）
     private var dayStartTimes: [String: Date] = [:]
     
-    // その日の開始時間を取得（設定されていない場合は次の5分切り上げ時刻）
+    // 現在アクティブなタスクのタイトルを取得
+    var currentActiveTaskTitle: String {
+        guard let parent = selectedParentTask else { return "No Task Selected" }
+        
+        // 未完了の最初の子タスクを探す（orderIndex順）
+        if let subTasks = parent.subTasks, !subTasks.isEmpty {
+            let sortedSubTasks = subTasks.sorted { $0.orderIndex < $1.orderIndex }
+            if let firstSubTask = sortedSubTasks.first(where: { !$0.isCompleted }) {
+                return firstSubTask.title
+            }
+        }
+        
+        // 子タスクがない、または全て完了している場合は親タスクのタイトル
+        return parent.title
+    }
+    
+    /// データ更新をトリガーしてViewを再計算させる
+    @MainActor
+    func triggerRefresh() {
+        refreshTrigger = UUID()
+    }
+    
+    // その日の開始時間を取得（設定されていない場合は初期値を計算して保存）
     func getDayStartTime(for date: Date) -> Date {
         let calendar = Calendar.current
         let dateKey = dateKey(for: date)
         
-        // 保存されている開始時間がある場合はそれを使用
+        // メモリキャッシュから取得
         if let savedTime = dayStartTimes[dateKey] {
             return savedTime
         }
         
-        // 保存されていない場合、次の5分切り上げ時刻を計算
+        // UserDefaultsから読み込み
+        let userDefaultsKey = "StartTime_\(dateKey)"
+        if let savedTimeInterval = UserDefaults.standard.object(forKey: userDefaultsKey) as? TimeInterval {
+            let savedTime = Date(timeIntervalSince1970: savedTimeInterval)
+            dayStartTimes[dateKey] = savedTime // メモリキャッシュにも保存
+            return savedTime
+        }
+        
+        // 保存されていない場合のみ、初期値を計算（現在時刻から次の5分切り上げ）
         let now = Date()
         let components = calendar.dateComponents([.hour, .minute], from: now)
         let currentMinutes = (components.hour ?? 0) * 60 + (components.minute ?? 0)
@@ -41,27 +78,41 @@ final class TaskViewModel {
         dateComponents.minute = next5Min % 60
         dateComponents.second = 0
         
-        if let calculatedTime = calendar.date(from: dateComponents) {
-            return calculatedTime
+        let calculatedTime: Date
+        if let time = calendar.date(from: dateComponents) {
+            calculatedTime = time
+        } else {
+            // フォールバック: 9:00
+            dateComponents.hour = 9
+            dateComponents.minute = 0
+            calculatedTime = calendar.date(from: dateComponents) ?? date
         }
         
-        // フォールバック: 9:00
-        dateComponents.hour = 9
-        dateComponents.minute = 0
-        return calendar.date(from: dateComponents) ?? date
+        // 計算した初期値を保存（メモリキャッシュとUserDefaultsの両方）
+        dayStartTimes[dateKey] = calculatedTime
+        UserDefaults.standard.set(calculatedTime.timeIntervalSince1970, forKey: userDefaultsKey)
+        
+        return calculatedTime
     }
     
-    // その日の開始時間を設定
+    // その日の開始時間を設定（メモリキャッシュとUserDefaultsの両方に保存）
     func setDayStartTime(_ time: Date, for date: Date) {
         let dateKey = dateKey(for: date)
+        let userDefaultsKey = "StartTime_\(dateKey)"
+        
+        // メモリキャッシュに保存
         dayStartTimes[dateKey] = time
+        
+        // UserDefaultsに永続化
+        UserDefaults.standard.set(time.timeIntervalSince1970, forKey: userDefaultsKey)
     }
     
-    // 日付のキーを生成
+    // 日付のキーを生成（yyyy-MM-dd形式）
     private func dateKey(for date: Date) -> String {
-        let calendar = Calendar.current
-        let components = calendar.dateComponents([.year, .month, .day], from: date)
-        return "\(components.year ?? 0)-\(components.month ?? 0)-\(components.day ?? 0)"
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.calendar = Calendar.current
+        return formatter.string(from: date)
     }
     
     init(modelContext: ModelContext? = nil) {
@@ -273,6 +324,9 @@ final class TaskViewModel {
         
         // 初期計画を保存
         try captureInitialSchedule(for: task)
+        
+        // Viewの再計算をトリガー
+        triggerRefresh()
     }
     
     /// タスクの並び順を変更
@@ -281,13 +335,252 @@ final class TaskViewModel {
     ///   - date: 対象日付
     @MainActor
     func reorderTasks(_ tasks: [TaskItem], for date: Date) throws {
+        guard let modelContext = modelContext else {
+            throw TaskViewModelError.modelContextNotSet
+        }
+        
         // orderIndexを更新
         for (index, task) in tasks.enumerated() {
             task.orderIndex = index
         }
         
+        // 変更を保存
+        try modelContext.save()
+        
         // スケジュールを再計算
         try updateCurrentSchedule(for: date)
+        
+        // Viewの再計算をトリガー
+        triggerRefresh()
+    }
+    
+    /// 親タスクの並び順を変更（ドラッグ＆ドロップ用）
+    /// - Parameters:
+    ///   - source: 移動元のインデックスセット
+    ///   - destination: 移動先のインデックス
+    ///   - date: 対象日付
+    /// - Note: このメソッドはまずcurrentParentTasksを直接更新してUIを即座に反映させ、
+    ///   その後orderIndexを更新して保存します。
+    @MainActor
+    func moveParentTasks(from source: IndexSet, to destination: Int, for date: Date) throws {
+        guard let modelContext = modelContext else {
+            throw TaskViewModelError.modelContextNotSet
+        }
+        
+        // 重要: まずUI用の配列（currentParentTasks）を直接更新して、見た目の並び替えを即座に確定
+        currentParentTasks.move(fromOffsets: source, toOffset: destination)
+        
+        // すべてのタスクに対して、新しい順序でorderIndexを0から順に振り直す
+        for (index, task) in currentParentTasks.enumerated() {
+            task.orderIndex = index
+        }
+        
+        // 変更を保存（orderIndexの更新を含む）
+        try modelContext.save()
+        
+        // スケジュールを再計算（新しい順序に基づいて時間を再計算）
+        try updateCurrentSchedule(for: date)
+        
+        // Viewの再計算をトリガー（refreshTriggerを更新してViewを更新）
+        triggerRefresh()
+    }
+    
+    /// 子タスクの並び順を変更（ドラッグ＆ドロップ用）
+    /// - Parameters:
+    ///   - source: 移動元のインデックスセット
+    ///   - destination: 移動先のインデックス
+    ///   - parent: 親タスク
+    ///   - date: 対象日付
+    @MainActor
+    func moveChildTasks(from source: IndexSet, to destination: Int, parent: TaskItem, for date: Date) throws {
+        guard let modelContext = modelContext else {
+            throw TaskViewModelError.modelContextNotSet
+        }
+        
+        guard let subTasksArray = parent.subTasks else {
+            return
+        }
+        
+        // 配列に変換してorderIndex順でソート
+        var reorderedSubTasks = Array(subTasksArray).sorted { $0.orderIndex < $1.orderIndex }
+        
+        // 並び替えを実行
+        reorderedSubTasks.move(fromOffsets: source, toOffset: destination)
+        
+        // orderIndexを更新
+        for (index, subTask) in reorderedSubTasks.enumerated() {
+            subTask.orderIndex = index
+        }
+        
+        // 親のsubTasksを更新（SwiftDataの@Relationshipが自動的に更新しますが、明示的に設定）
+        parent.subTasks = reorderedSubTasks
+        
+        // 変更を保存
+        try modelContext.save()
+        
+        // スケジュールを再計算
+        try updateCurrentSchedule(for: date)
+        
+        // Viewの再計算をトリガー
+        triggerRefresh()
+    }
+    
+    /// 親タスクを1つ上に移動
+    /// - Parameters:
+    ///   - task: 移動するタスク
+    ///   - date: 対象日付
+    @MainActor
+    func moveParentTaskUp(_ task: TaskItem, for date: Date) throws {
+        guard let modelContext = modelContext else {
+            throw TaskViewModelError.modelContextNotSet
+        }
+        
+        // currentParentTasksから対象タスクのインデックスを取得
+        guard let currentIndex = currentParentTasks.firstIndex(where: { $0.id == task.id }),
+              currentIndex > 0 else {
+            return // 先頭の場合は何もしない
+        }
+        
+        // 1. 配列内で入れ替え
+        currentParentTasks.swapAt(currentIndex - 1, currentIndex)
+        
+        // 2. orderIndexを0から連番で振り直し
+        for (i, t) in currentParentTasks.enumerated() {
+            t.orderIndex = i
+        }
+        
+        // 3. 保存と再計算
+        try modelContext.save()
+        try updateCurrentSchedule(for: date)
+        
+        // Viewの再計算をトリガー
+        triggerRefresh()
+    }
+    
+    /// 親タスクを1つ下に移動
+    /// - Parameters:
+    ///   - task: 移動するタスク
+    ///   - date: 対象日付
+    @MainActor
+    func moveParentTaskDown(_ task: TaskItem, for date: Date) throws {
+        guard let modelContext = modelContext else {
+            throw TaskViewModelError.modelContextNotSet
+        }
+        
+        // currentParentTasksから対象タスクのインデックスを取得
+        guard let currentIndex = currentParentTasks.firstIndex(where: { $0.id == task.id }),
+              currentIndex < currentParentTasks.count - 1 else {
+            return // 末尾の場合は何もしない
+        }
+        
+        // 1. 配列内で入れ替え
+        currentParentTasks.swapAt(currentIndex, currentIndex + 1)
+        
+        // 2. orderIndexを0から連番で振り直し
+        for (i, t) in currentParentTasks.enumerated() {
+            t.orderIndex = i
+        }
+        
+        // 変更を保存
+        try modelContext.save()
+        
+        // スケジュールを再計算
+        try updateCurrentSchedule(for: date)
+        
+        // Viewの再計算をトリガー
+        triggerRefresh()
+    }
+    
+    /// 子タスクを1つ上に移動
+    /// - Parameters:
+    ///   - task: 移動するタスク
+    ///   - parent: 親タスク
+    ///   - date: 対象日付
+    @MainActor
+    func moveChildTaskUp(_ task: TaskItem, parent: TaskItem, for date: Date) throws {
+        guard let modelContext = modelContext else {
+            throw TaskViewModelError.modelContextNotSet
+        }
+        
+        guard var subTasks = parent.subTasks else {
+            return
+        }
+        
+        // orderIndex順でソート
+        subTasks = subTasks.sorted { $0.orderIndex < $1.orderIndex }
+        
+        // 対象タスクのインデックスを取得
+        guard let currentIndex = subTasks.firstIndex(where: { $0.id == task.id }),
+              currentIndex > 0 else {
+            return // 先頭の場合は何もしない
+        }
+        
+        // 1つ上のタスクと入れ替え
+        let previousIndex = currentIndex - 1
+        let previousTask = subTasks[previousIndex]
+        
+        // orderIndexを入れ替え
+        let tempOrderIndex = task.orderIndex
+        task.orderIndex = previousTask.orderIndex
+        previousTask.orderIndex = tempOrderIndex
+        
+        // 親のsubTasksを更新
+        parent.subTasks = subTasks
+        
+        // 変更を保存
+        try modelContext.save()
+        
+        // スケジュールを再計算
+        try updateCurrentSchedule(for: date)
+        
+        // Viewの再計算をトリガー
+        triggerRefresh()
+    }
+    
+    /// 子タスクを1つ下に移動
+    /// - Parameters:
+    ///   - task: 移動するタスク
+    ///   - parent: 親タスク
+    ///   - date: 対象日付
+    @MainActor
+    func moveChildTaskDown(_ task: TaskItem, parent: TaskItem, for date: Date) throws {
+        guard let modelContext = modelContext else {
+            throw TaskViewModelError.modelContextNotSet
+        }
+        
+        guard var subTasks = parent.subTasks else {
+            return
+        }
+        
+        // orderIndex順でソート
+        subTasks = subTasks.sorted { $0.orderIndex < $1.orderIndex }
+        
+        // 対象タスクのインデックスを取得
+        guard let currentIndex = subTasks.firstIndex(where: { $0.id == task.id }),
+              currentIndex < subTasks.count - 1 else {
+            return // 末尾の場合は何もしない
+        }
+        
+        // 1つ下のタスクと入れ替え
+        let nextIndex = currentIndex + 1
+        let nextTask = subTasks[nextIndex]
+        
+        // orderIndexを入れ替え
+        let tempOrderIndex = task.orderIndex
+        task.orderIndex = nextTask.orderIndex
+        nextTask.orderIndex = tempOrderIndex
+        
+        // 親のsubTasksを更新
+        parent.subTasks = subTasks
+        
+        // 変更を保存
+        try modelContext.save()
+        
+        // スケジュールを再計算
+        try updateCurrentSchedule(for: date)
+        
+        // Viewの再計算をトリガー
+        triggerRefresh()
     }
     
     /// タスクの所要時間を変更（単独タスクの場合のみ有効）
@@ -297,6 +590,10 @@ final class TaskViewModel {
     ///   - date: 対象日付
     @MainActor
     func updateTaskDuration(_ task: TaskItem, duration: Int, for date: Date) throws {
+        guard let modelContext = modelContext else {
+            throw TaskViewModelError.modelContextNotSet
+        }
+        
         // 子タスクがある場合は変更できない
         guard task.subTasks?.isEmpty ?? true else {
             throw TaskViewModelError.cannotUpdateDurationForContainerTask
@@ -307,8 +604,14 @@ final class TaskViewModel {
         task.manualDuration = roundedDuration
         task.plannedDuration = roundedDuration // 後方互換性のため
         
+        // 変更を保存
+        try modelContext.save()
+        
         // スケジュールを再計算
         try updateCurrentSchedule(for: date)
+        
+        // Viewの再計算をトリガー
+        triggerRefresh()
     }
     
     /// タスクを完了にする
@@ -339,6 +642,9 @@ final class TaskViewModel {
         
         // 変更を保存
         try modelContext.save()
+        
+        // Viewの再計算をトリガー
+        triggerRefresh()
     }
     
     /// 親タスクの完了状態を自動更新（子タスクが全て完了した場合）
@@ -354,6 +660,9 @@ final class TaskViewModel {
             if allCompleted && !parentTask.isCompleted {
                 parentTask.isCompleted = true
                 try modelContext.save()
+                
+                // Viewの再計算をトリガー
+                triggerRefresh()
             }
         }
     }
@@ -373,11 +682,14 @@ final class TaskViewModel {
         
         // スケジュールを再計算
         try updateCurrentSchedule(for: date)
+        
+        // Viewの再計算をトリガー
+        triggerRefresh()
     }
     
-    /// 指定された日付の親タスク一覧を取得
+    /// 指定された日付の親タスク一覧を取得（内部用、後方互換性のため保持）
     /// - Parameter date: 対象日付
-    /// - Returns: 親タスクの配列（orderIndexでソート済み）
+    /// - Returns: 親タスクの配列（必ずorderIndexの昇順でソート済み）
     @MainActor
     func fetchParentTasks(for date: Date) throws -> [TaskItem] {
         guard let modelContext = modelContext else {
@@ -388,6 +700,7 @@ final class TaskViewModel {
         let startOfDay = calendar.startOfDay(for: date)
         let startOfNextDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
         
+        // 必ずorderIndexの昇順でソート
         let descriptor = FetchDescriptor<TaskItem>(
             predicate: #Predicate<TaskItem> { task in
                 task.date >= startOfDay && task.date < startOfNextDay && task.parent == nil
@@ -395,7 +708,37 @@ final class TaskViewModel {
             sortBy: [SortDescriptor(\.orderIndex, order: .forward)]
         )
         
-        return try modelContext.fetch(descriptor)
+        let tasks = try modelContext.fetch(descriptor)
+        
+        // 念のため、orderIndex順でソートして返す（二重チェック）
+        return tasks.sorted { $0.orderIndex < $1.orderIndex }
+    }
+    
+    /// 指定された日付の親タスク一覧を読み込み、currentParentTasksを更新する
+    /// - Parameter date: 対象日付
+    /// - Note: このメソッドはcurrentParentTasksを更新します。Viewはこのプロパティを直接参照してください。
+    @MainActor
+    func loadParentTasks(for date: Date) throws {
+        guard let modelContext = modelContext else {
+            throw TaskViewModelError.modelContextNotSet
+        }
+        
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        let startOfNextDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+        
+        // 必ずorderIndexの昇順でソート
+        let descriptor = FetchDescriptor<TaskItem>(
+            predicate: #Predicate<TaskItem> { task in
+                task.date >= startOfDay && task.date < startOfNextDay && task.parent == nil
+            },
+            sortBy: [SortDescriptor(\.orderIndex, order: .forward)]
+        )
+        
+        let tasks = try modelContext.fetch(descriptor)
+        
+        // currentParentTasksを更新（必ずorderIndex順でソート）
+        currentParentTasks = tasks.sorted { $0.orderIndex < $1.orderIndex }
     }
     
     /// 指定された日付の全タスク（親子関係を含む）を取得
