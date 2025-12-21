@@ -17,14 +17,6 @@ struct PlanListCard: View {
     let onSubTaskToggle: (TaskItem) -> Void
     let onAddTask: () -> Void
     
-    @State private var localStartTime: Date
-    
-    private func formatTime(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-        return formatter.string(from: date)
-    }
-    
     init(
         selectedDate: Date,
         dayStartTime: Date,
@@ -43,51 +35,76 @@ struct PlanListCard: View {
         self.onTaskToggle = onTaskToggle
         self.onSubTaskToggle = onSubTaskToggle
         self.onAddTask = onAddTask
-        self._localStartTime = State(initialValue: dayStartTime)
+    }
+    
+    // カスタムバインディング: ViewModelの保存ロジックに直接接続
+    private var startTimeBinding: Binding<Date> {
+        Binding(
+            get: {
+                viewModel.getDayStartTime(for: selectedDate)
+            },
+            set: { newTime in
+                // 日付と時刻を結合
+                let calendar = Calendar.current
+                var components = calendar.dateComponents([.year, .month, .day], from: selectedDate)
+                let timeComponents = calendar.dateComponents([.hour, .minute], from: newTime)
+                components.hour = timeComponents.hour
+                components.minute = timeComponents.minute
+                components.second = 0
+                
+                if let combinedDate = calendar.date(from: components) {
+                    // 1. 新しい時間を保存
+                    viewModel.setDayStartTime(combinedDate, for: selectedDate)
+                    // 2. スケジュールを即座に再計算
+                    Task { @MainActor in
+                        do {
+                            try viewModel.updateCurrentSchedule(for: selectedDate)
+                            viewModel.triggerRefresh()
+                        } catch {
+                            print("Error updating schedule: \(error)")
+                        }
+                    }
+                }
+            }
+        )
     }
     
     var body: some View {
         VStack(spacing: 8) {
             // 全体開始時間設定
-            VStack(alignment: .leading, spacing: 8) {
-                Text("全体開始時間")
-                    .font(.headline)
-                    .foregroundColor(.primary)
+            HStack {
+                // ラベル
+                Image(systemName: "clock")
+                    .foregroundColor(.secondary)
+                Text("Global Start Time")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
                 
-                // デジタル時計風の表示
-                HStack {
-                    Spacer()
-                    VStack(spacing: 4) {
-                        Text(formatTime(localStartTime))
-                            .font(.system(size: 48, weight: .bold, design: .monospaced))
-                            .foregroundColor(.teal)
-                        
-                        DatePicker(
-                            "",
-                            selection: $localStartTime,
-                            displayedComponents: .hourAndMinute
-                        )
-                        .datePickerStyle(.compact)
-                        .labelsHidden()
-                        .opacity(0.01)
-                        .frame(width: 100, height: 20)
-                    }
-                    Spacer()
-                }
-                .onChange(of: localStartTime) { _, newTime in
-                    let calendar = Calendar.current
-                    var components = calendar.dateComponents([.year, .month, .day], from: selectedDate)
-                    let timeComponents = calendar.dateComponents([.hour, .minute], from: newTime)
-                    components.hour = timeComponents.hour
-                    components.minute = timeComponents.minute
-                    components.second = 0
+                Spacer()
+                
+                // タップ可能な時間表示エリア
+                HStack(spacing: 4) {
+                    // 固定を表すロックアイコン
+                    Image(systemName: "lock.fill")
+                        .font(.caption2)
                     
-                    if let combinedDate = calendar.date(from: components) {
-                        onStartTimeChanged(combinedDate)
-                    }
+                    // 時刻ピッカー（見た目はテキストだがタップ可能）
+                    DatePicker(
+                        "",
+                        selection: startTimeBinding,
+                        displayedComponents: .hourAndMinute
+                    )
+                    .labelsHidden() // ラベルを隠してコンパクトに
+                    .tint(.teal)    // ピッカーの色
                 }
+                .foregroundColor(.teal) // 文字とアイコンの色
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Color.teal.opacity(0.1)) // 背景色
+                .cornerRadius(8)
             }
-            .padding()
+            .padding(.vertical, 8)
+            .padding(.horizontal)
             .background(Color.white)
             .cornerRadius(12)
             .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
@@ -130,9 +147,6 @@ struct PlanListCard: View {
         .background(Color.white)
         .cornerRadius(20)
         .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
-        .onChange(of: dayStartTime) { _, newTime in
-            localStartTime = newTime
-        }
     }
 }
 

@@ -18,18 +18,9 @@ struct PlanView: View {
     @State private var errorMessage: String?
     @State private var showingError = false
     
-    // 選択された日付の親タスクを取得（開始時間順にソート）
+    // 選択された日付の親タスクを取得（orderIndex順）
     private var parentTasks: [TaskItem] {
-        do {
-            let tasks = try viewModel.fetchParentTasks(for: selectedDate)
-            return tasks.sorted { task1, task2 in
-                let time1 = task1.currentStartTime ?? Date.distantPast
-                let time2 = task2.currentStartTime ?? Date.distantPast
-                return time1 < time2
-            }
-        } catch {
-            return []
-        }
+        viewModel.currentParentTasks
     }
     
     // 表示する5日分の日付を計算
@@ -95,6 +86,27 @@ struct PlanView: View {
                     .padding(.top, 16)
                     .padding(.bottom, 16)
                 }
+                
+                // Floating Action Button (右下)
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Button(action: {
+                            showingAddTask = true
+                        }) {
+                            Image(systemName: "plus")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                                .frame(width: 56, height: 56)
+                                .background(Color.teal)
+                                .clipShape(Circle())
+                                .shadow(radius: 4, x: 0, y: 4)
+                        }
+                        .padding()
+                    }
+                }
             }
         }
         .sheet(isPresented: $showingAddTask) {
@@ -131,15 +143,30 @@ struct PlanView: View {
         .onAppear {
             viewModel.modelContext = modelContext
             viewModel.selectedDate = selectedDate
+            loadParentTasks()
             refreshSchedule()
         }
         .onChange(of: selectedDate) { _, newDate in
             viewModel.selectedDate = newDate
+            loadParentTasks()
             refreshSchedule()
+        }
+        .onChange(of: viewModel.refreshTrigger) { _, _ in
+            loadParentTasks()
         }
     }
     
     // MARK: - ヘルパーメソッド
+    
+    private func loadParentTasks() {
+        Task { @MainActor in
+            do {
+                try viewModel.loadParentTasks(for: selectedDate)
+            } catch {
+                print("Error loading parent tasks: \(error)")
+            }
+        }
+    }
     
     private func refreshSchedule() {
         Task { @MainActor in

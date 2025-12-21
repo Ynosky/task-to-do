@@ -122,7 +122,7 @@ struct DoAddTaskRow: View {
                     .foregroundColor(.teal)
                     .font(.title3)
                 
-                Text("タスクの追加")
+                Text("Add Subtask")
                     .font(.body)
                     .foregroundColor(.primary)
                 
