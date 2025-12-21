@@ -50,7 +50,7 @@ struct DoView: View {
                         }
                     )
                     .frame(height: geometry.size.height / 3 * 1.25)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 20)
                     .padding(.top, 16)
                     
                     // 下部カード（Task List）

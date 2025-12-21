@@ -441,22 +441,16 @@ final class TaskViewModel {
             return // 先頭の場合は何もしない
         }
         
-        // 1つ上のタスクと入れ替え
-        let previousIndex = currentIndex - 1
-        let previousTask = currentParentTasks[previousIndex]
+        // 1. 配列内で入れ替え
+        currentParentTasks.swapAt(currentIndex - 1, currentIndex)
         
-        // orderIndexを入れ替え
-        let tempOrderIndex = task.orderIndex
-        task.orderIndex = previousTask.orderIndex
-        previousTask.orderIndex = tempOrderIndex
+        // 2. orderIndexを0から連番で振り直し
+        for (i, t) in currentParentTasks.enumerated() {
+            t.orderIndex = i
+        }
         
-        // currentParentTasksの配列も入れ替え
-        currentParentTasks.swapAt(currentIndex, previousIndex)
-        
-        // 変更を保存
+        // 3. 保存と再計算
         try modelContext.save()
-        
-        // スケジュールを再計算
         try updateCurrentSchedule(for: date)
         
         // Viewの再計算をトリガー
@@ -479,17 +473,13 @@ final class TaskViewModel {
             return // 末尾の場合は何もしない
         }
         
-        // 1つ下のタスクと入れ替え
-        let nextIndex = currentIndex + 1
-        let nextTask = currentParentTasks[nextIndex]
+        // 1. 配列内で入れ替え
+        currentParentTasks.swapAt(currentIndex, currentIndex + 1)
         
-        // orderIndexを入れ替え
-        let tempOrderIndex = task.orderIndex
-        task.orderIndex = nextTask.orderIndex
-        nextTask.orderIndex = tempOrderIndex
-        
-        // currentParentTasksの配列も入れ替え
-        currentParentTasks.swapAt(currentIndex, nextIndex)
+        // 2. orderIndexを0から連番で振り直し
+        for (i, t) in currentParentTasks.enumerated() {
+            t.orderIndex = i
+        }
         
         // 変更を保存
         try modelContext.save()

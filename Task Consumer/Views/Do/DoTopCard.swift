@@ -85,50 +85,16 @@ struct DoTopCardContent: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            // ヘッダー
-            HStack {
-                Button(action: onBack) {
-                    Image(systemName: "chevron.left")
-                        .foregroundColor(.teal)
-                        .font(.headline)
-                }
-                
-                Spacer()
-                
-                // 2段構成のタイトル表示
-                VStack(alignment: .leading, spacing: 4) {
-                    // 上段: 親タスク名
-                    if let parentTitle = viewModel.selectedParentTask?.title {
-                        Text(parentTitle)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    }
-                    
-                    // 下段: 現在実行中のタスク名（子タスク or 親タスク）
-                    Text(viewModel.currentActiveTaskTitle)
-                        .font(.title2)
-                        .bold()
-                        .foregroundColor(.primary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                
-                Spacer()
-                
-                // 戻るボタンとバランスを取るためのスペーサー
-                Image(systemName: "chevron.left")
-                    .opacity(0)
+        VStack(spacing: 2) {
+            // 1. 親タスク名（最上部）
+            if let parentTitle = viewModel.selectedParentTask?.title {
+                Text(parentTitle)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
-            .padding(.bottom, 8)
             
-            Spacer()
-            
-            // メイン：デジタル時計（1秒ごとに更新）
+            // 2. デジタル時計（中央・大）
             TimelineView(.periodic(from: .now, by: 1.0)) { context in
                 let now = context.date
                 
@@ -142,61 +108,61 @@ struct DoTopCardContent: View {
                         .monospacedDigit()
                         .contentTransition(.numericText())
                         .foregroundColor(isOverdue ? .red : .primary)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(1)
+                        .padding(.vertical, -10)
                 } else {
                     // アクティブなタスクがない場合（全完了など）
                     Text("Complete")
                         .font(.system(size: 70, weight: .bold, design: .monospaced))
                         .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(1)
+                        .padding(.vertical, -10)
                 }
             }
             
-            Spacer()
+            // 3. 現在の子タスク名（時計の下）
+            let activeTaskTitle = viewModel.currentActiveTaskTitle
+            if !activeTaskTitle.isEmpty && activeTaskTitle != "No Task Selected" {
+                Text(activeTaskTitle)
+                    .font(.title2)
+                    .bold()
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.center)
+            }
             
-            // フッター
-            VStack(spacing: 12) {
-                // 現在アクティブなタスク名称
-                if let activeTask = activeTask {
-                    Text(activeTask.title)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                } else {
-                    Text("タスクなし")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+            // 4. 操作ボタン（Start / Finish）
+            HStack(spacing: 20) {
+                // Start Button
+                Button(action: {
+                    print("Start tapped")
+                }) {
+                    Label("Start", systemImage: "play.fill")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.teal)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
                 }
                 
-                // 操作ボタン
-                HStack(spacing: 20) {
-                    // Start Button
-                    Button(action: {
-                        print("Start tapped")
-                    }) {
-                        Label("Start", systemImage: "play.fill")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.teal)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                    }
-                    
-                    // Finish Button
-                    Button(action: {
-                        print("Finish tapped")
-                    }) {
-                        Label("Finish", systemImage: "checkmark")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.primary)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                    }
+                // Finish Button
+                Button(action: {
+                    print("Finish tapped")
+                }) {
+                    Label("Finish", systemImage: "checkmark")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.primary)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.bottom, 20)
         }
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.white)
         .cornerRadius(20)

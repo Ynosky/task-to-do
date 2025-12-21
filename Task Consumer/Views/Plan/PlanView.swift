@@ -86,27 +86,6 @@ struct PlanView: View {
                     .padding(.top, 16)
                     .padding(.bottom, 16)
                 }
-                
-                // Floating Action Button (右下)
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        Button(action: {
-                            showingAddTask = true
-                        }) {
-                            Image(systemName: "plus")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.white)
-                                .frame(width: 56, height: 56)
-                                .background(Color.teal)
-                                .clipShape(Circle())
-                                .shadow(radius: 4, x: 0, y: 4)
-                        }
-                        .padding()
-                    }
-                }
             }
         }
         .sheet(isPresented: $showingAddTask) {

@@ -116,6 +116,7 @@ struct PlanListCard: View {
                         PlanParentTaskCard(
                             task: task,
                             viewModel: viewModel,
+                            selectedDate: selectedDate,
                             onTaskToggle: {
                                 onTaskToggle(task)
                             },
@@ -153,6 +154,7 @@ struct PlanListCard: View {
 struct PlanParentTaskCard: View {
     let task: TaskItem
     let viewModel: TaskViewModel
+    let selectedDate: Date
     let onTaskToggle: () -> Void
     let onSubTaskToggle: (TaskItem) -> Void
     
@@ -243,6 +245,39 @@ struct PlanParentTaskCard: View {
             // タスクを選択してDoViewに遷移
             viewModel.selectedParentTask = task
             viewModel.selectedTab = 1 // Doタブに切り替え
+        }
+        .contextMenu {
+            // 上へ移動
+            if let currentIndex = viewModel.currentParentTasks.firstIndex(where: { $0.id == task.id }),
+               currentIndex > 0 {
+                Button {
+                    Task { @MainActor in
+                        do {
+                            try viewModel.moveParentTaskUp(task, for: selectedDate)
+                        } catch {
+                            print("Error moving task up: \(error)")
+                        }
+                    }
+                } label: {
+                    Label("上へ移動", systemImage: "arrow.up")
+                }
+            }
+            
+            // 下へ移動
+            if let currentIndex = viewModel.currentParentTasks.firstIndex(where: { $0.id == task.id }),
+               currentIndex < viewModel.currentParentTasks.count - 1 {
+                Button {
+                    Task { @MainActor in
+                        do {
+                            try viewModel.moveParentTaskDown(task, for: selectedDate)
+                        } catch {
+                            print("Error moving task down: \(error)")
+                        }
+                    }
+                } label: {
+                    Label("下へ移動", systemImage: "arrow.down")
+                }
+            }
         }
     }
 }
