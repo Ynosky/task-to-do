@@ -24,6 +24,9 @@ final class TaskViewModel {
     // データ更新のトリガー（Viewの再計算を促すため）
     var refreshTrigger: UUID = UUID()
     
+    // 子タスクリストの強制再描画用ID
+    var refreshID: UUID = UUID()
+    
     // 日付ごとの開始時間を保存（日付の文字列をキーとして使用）
     private var dayStartTimes: [String: Date] = [:]
     
@@ -325,6 +328,9 @@ final class TaskViewModel {
         // 初期計画を保存
         try captureInitialSchedule(for: task)
         
+        // 子タスク追加時の強制再描画用IDを更新
+        refreshID = UUID()
+        
         // Viewの再計算をトリガー
         triggerRefresh()
     }
@@ -583,6 +589,90 @@ final class TaskViewModel {
         triggerRefresh()
     }
     
+    /// サブタスクを1つ上に移動（DoView用の簡易版）
+    /// - Parameter subTask: 移動するサブタスク
+    @MainActor
+    func moveSubTaskUp(_ subTask: TaskItem) {
+        guard let modelContext = modelContext,
+              let parent = subTask.parent,
+              let subTasks = parent.subTasks else {
+            return
+        }
+        
+        // orderIndex順でソート
+        var sortedTasks = subTasks.sorted { $0.orderIndex < $1.orderIndex }
+        
+        // 対象タスクのインデックスを取得
+        guard let index = sortedTasks.firstIndex(where: { $0.id == subTask.id }),
+              index > 0 else {
+            return // 先頭の場合は何もしない
+        }
+        
+        // 入れ替え
+        sortedTasks.swapAt(index - 1, index)
+        
+        // orderIndexを再採番
+        for (i, task) in sortedTasks.enumerated() {
+            task.orderIndex = i
+        }
+        
+        // 親のsubTasksを更新
+        parent.subTasks = sortedTasks
+        
+        // 保存と更新通知
+        do {
+            try modelContext.save()
+            // スケジュールを再計算
+            try updateCurrentSchedule(for: subTask.date)
+            // 強制再描画
+            refreshID = UUID()
+        } catch {
+            print("Error moving subTask up: \(error)")
+        }
+    }
+    
+    /// サブタスクを1つ下に移動（DoView用の簡易版）
+    /// - Parameter subTask: 移動するサブタスク
+    @MainActor
+    func moveSubTaskDown(_ subTask: TaskItem) {
+        guard let modelContext = modelContext,
+              let parent = subTask.parent,
+              let subTasks = parent.subTasks else {
+            return
+        }
+        
+        // orderIndex順でソート
+        var sortedTasks = subTasks.sorted { $0.orderIndex < $1.orderIndex }
+        
+        // 対象タスクのインデックスを取得
+        guard let index = sortedTasks.firstIndex(where: { $0.id == subTask.id }),
+              index < sortedTasks.count - 1 else {
+            return // 末尾の場合は何もしない
+        }
+        
+        // 入れ替え
+        sortedTasks.swapAt(index, index + 1)
+        
+        // orderIndexを再採番
+        for (i, task) in sortedTasks.enumerated() {
+            task.orderIndex = i
+        }
+        
+        // 親のsubTasksを更新
+        parent.subTasks = sortedTasks
+        
+        // 保存と更新通知
+        do {
+            try modelContext.save()
+            // スケジュールを再計算
+            try updateCurrentSchedule(for: subTask.date)
+            // 強制再描画
+            refreshID = UUID()
+        } catch {
+            print("Error moving subTask down: \(error)")
+        }
+    }
+    
     /// タスクの所要時間を変更（単独タスクの場合のみ有効）
     /// - Parameters:
     ///   - task: 対象タスク
@@ -762,6 +852,82 @@ final class TaskViewModel {
         )
         
         return try modelContext.fetch(descriptor)
+    }
+    
+    // MARK: - 実績時間管理
+    
+    /// タスクを開始する（実績開始時刻を記録）
+    /// - Parameter task: 開始するタスク
+    @MainActor
+    func startTask(_ task: TaskItem) {
+        guard let modelContext = modelContext else {
+            return
+        }
+        
+        task.actualStartTime = Date()
+        
+        do {
+            try modelContext.save()
+            // 強制再描画
+            refreshID = UUID()
+        } catch {
+            print("Error starting task: \(error)")
+        }
+    }
+    
+    /// タスクを終了する（実績終了時刻を記録し、完了にする）
+    /// - Parameter task: 終了するタスク
+    @MainActor
+    func finishTask(_ task: TaskItem) {
+        guard let modelContext = modelContext else {
+            return
+        }
+        
+        task.actualEndTime = Date()
+        task.isCompleted = true
+        
+        // 実績時間を計算して保存（分単位）
+        if let startTime = task.actualStartTime {
+            let duration = task.actualEndTime!.timeIntervalSince(startTime)
+            task.actualDuration = Int(duration / 60) // 分単位に変換
+        }
+        
+        do {
+            try modelContext.save()
+            
+            // 親タスクの完了状態を更新
+            if let parent = task.parent {
+                try? updateParentCompletionStatus(parent)
+            }
+            
+            // スケジュールを再計算
+            try? updateCurrentSchedule(for: task.date)
+            
+            // 強制再描画
+            refreshID = UUID()
+        } catch {
+            print("Error finishing task: \(error)")
+        }
+    }
+    
+    /// 実績時間の表示色を判定するヘルパー
+    /// - Parameter task: 対象タスク
+    /// - Returns: 表示色（青: 予定より早い、赤: 予定より遅い、通常色: 未完了）
+    func actualTimeColor(for task: TaskItem) -> Color {
+        guard let start = task.actualStartTime,
+              let end = task.actualEndTime else {
+            return .primary // 終了していない場合は通常色
+        }
+        
+        let actualDuration = end.timeIntervalSince(start)
+        // effectiveDurationは分単位なので、秒に変換して比較
+        let plannedSeconds = Double(task.effectiveDuration) * 60
+        
+        if actualDuration <= plannedSeconds {
+            return .blue // 予定より早い（または同じ）なら青
+        } else {
+            return .red // 予定より遅いなら赤
+        }
     }
 }
 

@@ -10,6 +10,20 @@ import SwiftData
 
 struct MainTabView: View {
     @State private var viewModel = TaskViewModel()
+    @AppStorage("userInterfaceStyle") private var userInterfaceStyle: String = "light"
+    
+    private var colorScheme: ColorScheme? {
+        switch userInterfaceStyle {
+        case "light":
+            return .light
+        case "dark":
+            return .dark
+        case "system":
+            return nil
+        default:
+            return .light
+        }
+    }
     
     var body: some View {
         TabView(selection: $viewModel.selectedTab) {
@@ -42,6 +56,7 @@ struct MainTabView: View {
                 .tag(3)
         }
         .tint(.teal)
+        .preferredColorScheme(colorScheme)
     }
 }
 
@@ -63,12 +78,19 @@ struct StatsView: View {
 // MARK: - Settings View
 
 struct SettingsView: View {
+    @AppStorage("userInterfaceStyle") private var userInterfaceStyle: String = "light"
+    
     var body: some View {
         NavigationStack {
-            VStack {
-                Text("Settings")
-                    .font(.largeTitle)
-                    .foregroundColor(.secondary)
+            List {
+                Section(header: Text("Appearance")) {
+                    Picker("Theme", selection: $userInterfaceStyle) {
+                        Text("Light").tag("light")
+                        Text("Dark").tag("dark")
+                        Text("System").tag("system")
+                    }
+                    .pickerStyle(.segmented)
+                }
             }
             .navigationTitle("設定")
         }

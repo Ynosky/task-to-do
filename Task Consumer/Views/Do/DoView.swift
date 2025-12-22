@@ -58,11 +58,19 @@ struct DoView: View {
                     DoBottomCard(
                         subTasks: subTasks,
                         selectedParentTask: viewModel.selectedParentTask,
+                        refreshID: viewModel.refreshID,
+                        viewModel: viewModel,
+                        selectedDate: viewModel.selectedDate,
                         onTaskToggle: { task in
                             handleTaskToggle(task)
                         },
                         onAddTask: {
                             handleAddSubTask()
+                        },
+                        onTaskEdit: { task in
+                            editingTask = task
+                            editingParentTask = task.parent
+                            showingTaskEdit = true
                         }
                     )
                     .padding(.horizontal, 16)
@@ -156,8 +164,26 @@ struct DoView: View {
                 if task.modelContext == nil {
                     modelContext.insert(task)
                 }
+                // 親タスクのIDを保存（子タスク追加後に再取得するため）
+                let parentTaskId = viewModel.selectedParentTask?.id
+                
                 try viewModel.addTaskToDay(task, to: viewModel.selectedDate)
+                
+                // 子タスクを追加した場合、親タスクの関係を再読み込み
+                // SwiftDataの関係は自動的に更新されるが、確実に反映させるため
+                // 親タスクを再取得して、subTasksの関係を更新
+                if let parentTaskId = parentTaskId {
+                    // 親タスクを再取得（fetchParentTasksメソッドを使用）
+                    let parentTasks = try viewModel.fetchParentTasks(for: viewModel.selectedDate)
+                    if let updatedParent = parentTasks.first(where: { $0.id == parentTaskId }) {
+                        viewModel.selectedParentTask = updatedParent
+                    }
+                }
+                
                 refreshSchedule()
+                
+                // 強制更新処理：Viewの再描画をトリガー
+                viewModel.triggerRefresh()
             } catch {
                 showError(error.localizedDescription)
             }

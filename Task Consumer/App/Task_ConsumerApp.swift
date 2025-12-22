@@ -26,7 +26,6 @@ struct Task_ConsumerApp: App {
     var body: some Scene {
         WindowGroup {
             MainTabView()
-                .preferredColorScheme(.light)
         }
         .modelContainer(sharedModelContainer)
     }
