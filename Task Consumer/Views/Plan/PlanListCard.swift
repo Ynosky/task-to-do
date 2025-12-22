@@ -217,8 +217,31 @@ struct PlanParentTaskCard: View {
         return subTasks.sorted { $0.orderIndex < $1.orderIndex }
     }
     
+    // 進捗率を計算 (0.0 = 開始時, 1.0 = 終了時)
+    // 現在時刻が開始時間と終了時間の間にある場合のみ値を返す
+    private func calculateProgress(currentTime: Date) -> CGFloat? {
+        guard let start = task.currentStartTime,
+              let end = task.currentEndTime,
+              !task.isCompleted else {
+            return nil
+        }
+        
+        // 期間外（まだ始まっていない、または既に終わった）なら nil を返す = オーブを表示しない
+        guard currentTime >= start && currentTime < end else {
+            return nil
+        }
+        
+        let totalDuration = end.timeIntervalSince(start)
+        let elapsed = currentTime.timeIntervalSince(start)
+        
+        return totalDuration > 0 ? CGFloat(elapsed / totalDuration) : 0
+    }
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        TimelineView(.periodic(from: .now, by: 5.0)) { timeline in
+            let progress = calculateProgress(currentTime: timeline.date)
+            
+            VStack(alignment: .leading, spacing: 12) {
             // ヘッダー
             HStack {
                 Text(task.title)
@@ -295,7 +318,17 @@ struct PlanParentTaskCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
+        .background {
+            ZStack {
+                // 基本の背景色
+                Color(.secondarySystemGroupedBackground)
+                
+                // 進行中ならオーブアニメーションを重ねる
+                if let progress = progress {
+                    ProgressOrbBackground(progress: progress)
+                }
+            }
+        }
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
         .contentShape(Rectangle())
@@ -379,6 +412,7 @@ struct PlanParentTaskCard: View {
                 }
             )
         }
+        } // TimelineViewのクロージャを閉じる
     }
 }
 
@@ -575,6 +609,37 @@ struct FixedTimePickerSheet: View {
             }
         }
         .presentationDetents([.medium])
+    }
+}
+
+// MARK: - Progress Orb Background
+
+struct ProgressOrbBackground: View {
+    let progress: CGFloat // 0.0 - 1.0
+    let color: Color = .teal
+    
+    var body: some View {
+        GeometryReader { geo in
+            // 玉のY座標: 進捗に合わせて上から下へ移動
+            // progress 0のとき上端(y=0付近)、1のとき下端(y=height付近)
+            let orbYPosition = geo.size.height * progress
+            
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [color.opacity(0.4), color.opacity(0.1), .clear], // 透明度も少し下げる
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: geo.size.width * 0.4 // 半径も小さく
+                    )
+                )
+                .frame(width: geo.size.width * 0.8, height: geo.size.width * 0.8) // サイズを縮小
+                .blur(radius: 30) // ぼかしも少し控えめに
+                .position(x: geo.size.width / 2, y: orbYPosition)
+                // 滑らかに動くようにアニメーション付与
+                .animation(.linear(duration: 1.0), value: progress)
+        }
+        .clipped() // カードからはみ出た部分をカット
     }
 }
 
