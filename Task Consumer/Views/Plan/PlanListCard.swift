@@ -308,6 +308,7 @@ struct PlanParentTaskCard: View {
                         PlanSubTaskRow(
                             task: subTask,
                             viewModel: viewModel,
+                            selectedDate: selectedDate,
                             onToggle: {
                                 onSubTaskToggle(subTask)
                             }
@@ -393,6 +394,19 @@ struct PlanParentTaskCard: View {
                     Label("下へ移動", systemImage: "arrow.down")
                 }
             }
+            
+            // 削除
+            Button(role: .destructive) {
+                Task { @MainActor in
+                    do {
+                        try viewModel.deleteTask(task, for: selectedDate)
+                    } catch {
+                        print("Error deleting task: \(error)")
+                    }
+                }
+            } label: {
+                Label("削除", systemImage: "trash")
+            }
         }
         .sheet(isPresented: $showingFixedTimePicker) {
             FixedTimePickerSheet(
@@ -419,6 +433,7 @@ struct PlanParentTaskCard: View {
 struct PlanSubTaskRow: View {
     let task: TaskItem
     let viewModel: TaskViewModel
+    let selectedDate: Date
     let onToggle: () -> Void
     
     private var timeRangeText: String {
@@ -488,6 +503,18 @@ struct PlanSubTaskRow: View {
             }
         }
         .padding(.vertical, 4)
+        .contextMenu {
+            // 削除
+            Button(role: .destructive) {
+                Task { @MainActor in
+                    // 子タスクの削除
+                    // ※ 子タスクの日付は親と同じはずですが、念のため task.date を使用
+                    try? viewModel.deleteTask(task, for: task.date)
+                }
+            } label: {
+                Label("削除", systemImage: "trash")
+            }
+        }
     }
 }
 

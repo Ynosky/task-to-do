@@ -25,6 +25,12 @@ struct TaskEditView: View {
     @State private var parentTask: TaskItem?
     @State private var availableParents: [TaskItem] = []
     
+    // 実績時間編集用のState変数
+    @State private var actualStartTime: Date = Date()
+    @State private var actualEndTime: Date = Date()
+    @State private var hasActualStartTime: Bool = false // 開始しているか
+    @State private var hasActualEndTime: Bool = false   // 終了しているか
+    
     private let durationOptions = Array(stride(from: 5, through: 240, by: 5)) // 5分から240分まで5分刻み
     
     var isEditing: Bool {
@@ -63,6 +69,19 @@ struct TaskEditView: View {
                         }
                     }
                 }
+                
+                // 実績時間編集セクション（開始済みの場合のみ表示）
+                if hasActualStartTime {
+                    Section("実績時間 (修正)") {
+                        DatePicker("開始時間", selection: $actualStartTime)
+                        
+                        Toggle("終了済み", isOn: $hasActualEndTime)
+                        
+                        if hasActualEndTime {
+                            DatePicker("終了時間", selection: $actualEndTime)
+                        }
+                    }
+                }
             }
             .navigationTitle(isEditing ? "タスクを編集" : "新しいタスク")
             .navigationBarTitleDisplayMode(.inline)
@@ -98,6 +117,27 @@ struct TaskEditView: View {
             // 子タスクがない場合のみmanualDurationを表示
             duration = (task.subTasks?.isEmpty ?? true) ? task.manualDuration : 0
             parentTask = task.parent
+            
+            // 実績情報の読み込み
+            if let start = task.actualStartTime {
+                actualStartTime = start
+                hasActualStartTime = true
+            } else {
+                hasActualStartTime = false
+            }
+            
+            if let end = task.actualEndTime {
+                actualEndTime = end
+                hasActualEndTime = true
+            } else {
+                // 未終了の場合は現在時刻などを初期値に
+                actualEndTime = Date()
+                hasActualEndTime = false
+            }
+        } else {
+            // 新規作成時は初期化
+            hasActualStartTime = false
+            hasActualEndTime = false
         }
     }
     
@@ -151,6 +191,25 @@ struct TaskEditView: View {
             
             if existingTask.parent?.id != parentTask?.id {
                 existingTask.parent = parentTask
+            }
+            
+            // 実績情報の反映（開始済みの場合）
+            if hasActualStartTime {
+                existingTask.actualStartTime = actualStartTime
+                
+                if hasActualEndTime {
+                    existingTask.actualEndTime = actualEndTime
+                    existingTask.isCompleted = true
+                    
+                    // 実績所要時間(分)の再計算
+                    let duration = actualEndTime.timeIntervalSince(actualStartTime)
+                    existingTask.actualDuration = max(0, Int(duration / 60))
+                } else {
+                    // 終了時間がない状態に戻す（実行中に戻す）
+                    existingTask.actualEndTime = nil
+                    existingTask.isCompleted = false
+                    existingTask.actualDuration = nil
+                }
             }
             
             taskToSave = existingTask

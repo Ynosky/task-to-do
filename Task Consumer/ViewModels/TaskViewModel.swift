@@ -774,14 +774,39 @@ final class TaskViewModel {
             throw TaskViewModelError.modelContextNotSet
         }
         
+        // 親タスクか子タスクかを判定して、削除後の再番対象を特定するための準備
+        let parentTask = task.parent
+        
+        // 1. 削除実行
         modelContext.delete(task)
+        
+        // 一旦保存して削除を確定させる
         try modelContext.save()
         
-        // スケジュールを再計算
+        // 2. 並び順の再番 (Re-indexing)
+        if let parent = parentTask {
+            // 子タスクの場合: 親の残りの子タスクを再番
+            if let subTasks = parent.subTasks {
+                let sortedSubTasks = subTasks.sorted { $0.orderIndex < $1.orderIndex }
+                for (index, t) in sortedSubTasks.enumerated() {
+                    t.orderIndex = index
+                }
+            }
+        } else {
+            // 親タスクの場合: その日の残りの親タスクを再番
+            let remainingTasks = try fetchParentTasks(for: date)
+            for (index, t) in remainingTasks.enumerated() {
+                t.orderIndex = index
+            }
+        }
+        
+        // 3. 変更を保存してスケジュール再計算
+        try modelContext.save()
         try updateCurrentSchedule(for: date)
         
         // Viewの再計算をトリガー
         triggerRefresh()
+        refreshID = UUID() // 子タスクリストの強制再描画もトリガー
     }
     
     /// 指定された日付の親タスク一覧を取得（内部用、後方互換性のため保持）

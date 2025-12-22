@@ -179,6 +179,15 @@ struct DoSubTaskRow: View {
                     Label("下へ移動", systemImage: "arrow.down")
                 }
             }
+            
+            // 削除
+            Button(role: .destructive) {
+                Task { @MainActor in
+                    try? viewModel.deleteTask(task, for: selectedDate)
+                }
+            } label: {
+                Label("削除", systemImage: "trash")
+            }
         }
     }
 }
