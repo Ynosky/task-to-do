@@ -186,7 +186,14 @@ final class TaskViewModel {
         var currentTime = dayStart
         
         for parentTask in parentTasks {
-            // 親タスクの開始時間を設定
+            // 1. 固定開始時間が設定されている場合、現在時刻と比較して遅い方採用
+            if let fixed = parentTask.fixedStartTime {
+                // fixedがcurrentTimeより未来なら、そこまで時間を飛ばす（ギャップ発生）
+                // fixedが過去なら、currentTime（前のタスク終了）をそのまま使う
+                currentTime = max(currentTime, fixed)
+            }
+            
+            // 2. 親タスクの開始時間を設定
             parentTask.currentStartTime = currentTime
             
             // 子タスクがある場合、親の開始時間から連鎖的に計算

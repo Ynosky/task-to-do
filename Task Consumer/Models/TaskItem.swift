@@ -37,6 +37,9 @@ final class TaskItem {
     var actualStartTime: Date? // 実際の開始時刻（Startボタンで記録）
     var actualEndTime: Date? // 実際の終了時刻（Finishボタンで記録）
     
+    // MARK: - 固定開始時間（Time Anchor）
+    var fixedStartTime: Date? // nilなら前のタスク終了後すぐ、値があればその時間を待つ
+    
     // MARK: - Computed Properties
     
     /// 有効な所要時間を計算
@@ -76,7 +79,8 @@ final class TaskItem {
         initialStartTime: Date? = nil,
         initialEndTime: Date? = nil,
         actualStartTime: Date? = nil,
-        actualEndTime: Date? = nil
+        actualEndTime: Date? = nil,
+        fixedStartTime: Date? = nil
     ) {
         self.id = id
         self.title = title
@@ -96,6 +100,7 @@ final class TaskItem {
         self.initialEndTime = initialEndTime
         self.actualStartTime = actualStartTime
         self.actualEndTime = actualEndTime
+        self.fixedStartTime = fixedStartTime
     }
 }
 
