@@ -58,6 +58,11 @@ struct MainTabView: View {
         }
         .tint(colorScheme == .dark ? AppTheme.Deep.accent : AppTheme.Paper.accent)
         .preferredColorScheme(colorScheme)
+        .background {
+            if colorScheme == .dark {
+                SeaPatternBackground()
+            }
+        }
     }
 }
 
@@ -274,7 +279,7 @@ struct StatsView: View {
                     chartSection
                 }
             }
-            .background(colorScheme == .dark ? AppTheme.Deep.background : AppTheme.Paper.background)
+            .background(Color.clear) // 背景を透明にして深海パターンが見えるように
             .toolbar(.hidden, for: .navigationBar)
         }
     }
@@ -542,6 +547,69 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("設定")
+            .scrollContentBackground(.hidden) // リストの背景を透明にして深海パターンが見えるように
+        }
+    }
+}
+
+// MARK: - Sea Pattern Background
+
+struct SeaPatternBackground: View {
+    @State private var isAnimating = false
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                // 1. 全体のベースグラデーション
+                LinearGradient(
+                    colors: [
+                        .teal.opacity(0.15),
+                        .black.opacity(0.8), // 深さを出すため少し暗く
+                        .blue.opacity(0.1)
+                    ],
+                    startPoint: isAnimating ? .topLeading : .top,
+                    endPoint: isAnimating ? .bottomTrailing : .bottom
+                )
+                .animation(.easeInOut(duration: 15).repeatForever(autoreverses: true), value: isAnimating)
+                
+                // 2. 漂う光の玉 (メイン: Teal)
+                Circle()
+                    .fill(Color.teal.opacity(0.12))
+                    .frame(width: geometry.size.width * 0.9)
+                    .scaleEffect(isAnimating ? 1.1 : 0.9) // 呼吸
+                    .offset(x: isAnimating ? -30 : 30, y: isAnimating ? -20 : 20) // 漂い
+                    .blur(radius: 60)
+                    .position(x: geometry.size.width * 0.3, y: geometry.size.height * 0.4)
+                    .animation(.easeInOut(duration: 12).repeatForever(autoreverses: true), value: isAnimating)
+                
+                // 3. 漂う光の玉 (サブ: Blue)
+                Circle()
+                    .fill(Color.blue.opacity(0.1))
+                    .frame(width: geometry.size.width * 0.8)
+                    .scaleEffect(isAnimating ? 1.0 : 1.2)
+                    .offset(x: isAnimating ? 40 : -20, y: isAnimating ? 30 : -10)
+                    .blur(radius: 50)
+                    .position(x: geometry.size.width * 0.7, y: geometry.size.height * 0.8)
+                    .animation(.easeInOut(duration: 10).repeatForever(autoreverses: true), value: isAnimating)
+                
+                // 4. 深層からの輝き (Indigo)
+                RadialGradient(
+                    colors: [.indigo.opacity(0.15), .clear],
+                    center: isAnimating ? .bottomLeading : .bottomTrailing,
+                    startRadius: 0,
+                    endRadius: geometry.size.height * 0.6
+                )
+                .opacity(isAnimating ? 0.8 : 0.5) // 明滅
+                .animation(.easeInOut(duration: 14).repeatForever(autoreverses: true), value: isAnimating)
+            }
+        }
+        .ignoresSafeArea()
+        .allowsHitTesting(false) // タップ操作を邪魔しない
+        .onAppear {
+            // ゆっくりとした深海の動き
+            withAnimation(.easeInOut(duration: 12).repeatForever(autoreverses: true)) {
+                isAnimating = true
+            }
         }
     }
 }

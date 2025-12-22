@@ -130,13 +130,13 @@ struct PlanDateButton: View {
                 Text(dayOfWeek)
                     .font(.system(size: 9, weight: .black, design: .default))
                     .tracking(2) // tracking-widest相当
-                    .foregroundColor(isSelected ? .white : (colorScheme == .dark ? Color.white.opacity(unselectedOpacity) : Color.black.opacity(unselectedOpacity)))
+                    .foregroundColor(isSelected ? (colorScheme == .light ? Color.black : Color.white) : (colorScheme == .light ? Color.gray : Color.white.opacity(unselectedOpacity)))
                 
                 // 日付
                 VStack(spacing: 4) {
                     Text(dateText)
                         .font(.system(size: 16, weight: .light))
-                        .foregroundColor(isSelected ? .white : (colorScheme == .dark ? Color.white.opacity(unselectedOpacity) : Color.black.opacity(unselectedOpacity)))
+                        .foregroundColor(isSelected ? (colorScheme == .light ? Color.black : Color.white) : (colorScheme == .light ? Color.black : Color.white.opacity(unselectedOpacity)))
                         .contentTransition(.numericText())
                     
                     // 選択時のシアンのアンダーライン（発光効果付き）
