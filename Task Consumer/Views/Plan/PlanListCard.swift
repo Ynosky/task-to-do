@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct PlanListCard: View {
     let selectedDate: Date
@@ -112,7 +113,22 @@ struct PlanListCard: View {
             // 親タスクリスト
             ScrollView {
                 VStack(spacing: 12) {
-                    ForEach(parentTasks) { task in
+                    ForEach(Array(parentTasks.enumerated()), id: \.element.id) { index, task in
+                        // 前のタスクを取得
+                        let previousTask = index > 0 ? parentTasks[index - 1] : nil
+                        
+                        // ギャップ判定: 前のタスク終了時間 < 現在のタスク開始時間
+                        if let prevEnd = previousTask?.currentEndTime,
+                           let currStart = task.currentStartTime,
+                           currStart > prevEnd {
+                            let gapDuration = currStart.timeIntervalSince(prevEnd)
+                            if gapDuration >= 60 { // 1分以上なら表示
+                                // ギャップ表示行
+                                GapTimeRow(duration: gapDuration)
+                            }
+                        }
+                        
+                        // タスクカード本体
                         PlanParentTaskCard(
                             task: task,
                             viewModel: viewModel,
@@ -157,6 +173,8 @@ struct PlanParentTaskCard: View {
     let selectedDate: Date
     let onTaskToggle: () -> Void
     let onSubTaskToggle: (TaskItem) -> Void
+    
+    @State private var showingFixedTimePicker = false
     
     private var timeRangeText: String {
         if let startTime = task.currentStartTime,
@@ -220,6 +238,13 @@ struct PlanParentTaskCard: View {
             VStack(alignment: .leading, spacing: 2) {
                 // 予定時間と実績時間を横並びで表示
                 HStack(spacing: 4) {
+                    // 固定時間アイコン（設定されている場合）
+                    if task.fixedStartTime != nil {
+                        Image(systemName: "anchor")
+                            .font(.caption2)
+                            .foregroundColor(.teal)
+                    }
+                    
                     // 予定時間
                     if let startTime = task.currentStartTime,
                        let endTime = task.currentEndTime {
@@ -280,6 +305,30 @@ struct PlanParentTaskCard: View {
             viewModel.selectedTab = 1 // Doタブに切り替え
         }
         .contextMenu {
+            // 開始時間を固定
+            Button {
+                showingFixedTimePicker = true
+            } label: {
+                Label("開始時間を固定", systemImage: "anchor")
+            }
+            
+            // 固定を解除
+            if task.fixedStartTime != nil {
+                Button {
+                    Task { @MainActor in
+                        task.fixedStartTime = nil
+                        try? viewModel.modelContext?.save()
+                        do {
+                            try viewModel.updateCurrentSchedule(for: selectedDate)
+                        } catch {
+                            print("Error updating schedule: \(error)")
+                        }
+                    }
+                } label: {
+                    Label("固定を解除", systemImage: "xmark.circle")
+                }
+            }
+            
             // 上へ移動
             if let currentIndex = viewModel.currentParentTasks.firstIndex(where: { $0.id == task.id }),
                currentIndex > 0 {
@@ -311,6 +360,24 @@ struct PlanParentTaskCard: View {
                     Label("下へ移動", systemImage: "arrow.down")
                 }
             }
+        }
+        .sheet(isPresented: $showingFixedTimePicker) {
+            FixedTimePickerSheet(
+                task: task,
+                selectedDate: selectedDate,
+                viewModel: viewModel,
+                onSave: { fixedTime in
+                    Task { @MainActor in
+                        task.fixedStartTime = fixedTime
+                        try? viewModel.modelContext?.save()
+                        do {
+                            try viewModel.updateCurrentSchedule(for: selectedDate)
+                        } catch {
+                            print("Error updating schedule: \(error)")
+                        }
+                    }
+                }
+            )
         }
     }
 }
@@ -387,6 +454,127 @@ struct PlanSubTaskRow: View {
             }
         }
         .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Gap Time Row
+
+struct GapTimeRow: View {
+    let duration: TimeInterval
+    
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        let totalMinutes = Int(duration / 60)
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        
+        if hours > 0 {
+            if minutes > 0 {
+                return "\(hours)時間\(minutes)分"
+            } else {
+                return "\(hours)時間"
+            }
+        } else {
+            return "\(minutes)分"
+        }
+    }
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "cup.and.saucer.fill")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Text("休憩・スキマ時間")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Spacer()
+            Text(formatDuration(duration))
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 16)
+        .background(Color.gray.opacity(0.1))
+        .cornerRadius(8)
+    }
+}
+
+// MARK: - Fixed Time Picker Sheet
+
+struct FixedTimePickerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let task: TaskItem
+    let selectedDate: Date
+    let viewModel: TaskViewModel
+    let onSave: (Date?) -> Void
+    
+    @State private var selectedTime: Date
+    
+    init(task: TaskItem, selectedDate: Date, viewModel: TaskViewModel, onSave: @escaping (Date?) -> Void) {
+        self.task = task
+        self.selectedDate = selectedDate
+        self.viewModel = viewModel
+        self.onSave = onSave
+        
+        // 初期値: 既存の固定時間、またはタスクの開始時間、または現在時刻
+        if let fixedTime = task.fixedStartTime {
+            _selectedTime = State(initialValue: fixedTime)
+        } else if let startTime = task.currentStartTime {
+            _selectedTime = State(initialValue: startTime)
+        } else {
+            let calendar = Calendar.current
+            var components = calendar.dateComponents([.year, .month, .day], from: selectedDate)
+            components.hour = 9
+            components.minute = 0
+            _selectedTime = State(initialValue: calendar.date(from: components) ?? Date())
+        }
+    }
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                Text("開始時間を固定")
+                    .font(.headline)
+                    .padding(.top)
+                
+                DatePicker(
+                    "開始時間",
+                    selection: $selectedTime,
+                    displayedComponents: .hourAndMinute
+                )
+                .datePickerStyle(.wheel)
+                .labelsHidden()
+                
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("固定開始時間")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("キャンセル") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") {
+                        // 日付と時刻を結合
+                        let calendar = Calendar.current
+                        var components = calendar.dateComponents([.year, .month, .day], from: selectedDate)
+                        let timeComponents = calendar.dateComponents([.hour, .minute], from: selectedTime)
+                        components.hour = timeComponents.hour
+                        components.minute = timeComponents.minute
+                        components.second = 0
+                        
+                        if let combinedDate = calendar.date(from: components) {
+                            onSave(combinedDate)
+                        }
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 }
 
