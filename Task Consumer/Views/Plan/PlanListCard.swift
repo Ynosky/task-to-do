@@ -105,7 +105,7 @@ struct PlanListCard: View {
             }
             .padding(.vertical, 8)
             .padding(.horizontal)
-            .background(Color.white)
+            .background(Color(.secondarySystemGroupedBackground))
             .cornerRadius(12)
             .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
             
@@ -136,7 +136,7 @@ struct PlanListCard: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.white)
+                        .background(Color(.secondarySystemGroupedBackground))
                         .cornerRadius(12)
                         .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
                     }
@@ -145,7 +145,7 @@ struct PlanListCard: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.white)
+        .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(20)
         .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
     }
@@ -182,8 +182,14 @@ struct PlanParentTaskCard: View {
         } else {
             // コンテナタスク: 子タスクの合計時間を表示
             let totalDuration = task.effectiveDuration
-            return "子タスク合計: \(totalDuration)分"
+            return "タスク合計: \(totalDuration)分"
         }
+    }
+    
+    private func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
     
     private var subTasks: [TaskItem] {
@@ -212,9 +218,35 @@ struct PlanParentTaskCard: View {
             }
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(timeRangeText)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                // 予定時間と実績時間を横並びで表示
+                HStack(spacing: 4) {
+                    // 予定時間
+                    if let startTime = task.currentStartTime,
+                       let endTime = task.currentEndTime {
+                        Text("Plan: \(formatTime(startTime)) - \(formatTime(endTime))")
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("Plan: 未設定")
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    // 実績時間（条件付き表示）
+                    if let actStart = task.actualStartTime {
+                        Text(" / ")
+                            .foregroundColor(.secondary)
+                        
+                        if let actEnd = task.actualEndTime {
+                            // 完了時: 青か赤で表示
+                            Text("Act: \(formatTime(actStart)) - \(formatTime(actEnd))")
+                                .foregroundColor(viewModel.actualTimeColor(for: task))
+                        } else {
+                            // 進行中
+                            Text("Act: \(formatTime(actStart)) - ...")
+                                .foregroundColor(.orange)
+                        }
+                    }
+                }
+                .font(.caption)
                 
                 Text(durationText)
                     .font(.caption2)
@@ -227,6 +259,7 @@ struct PlanParentTaskCard: View {
                     ForEach(subTasks) { subTask in
                         PlanSubTaskRow(
                             task: subTask,
+                            viewModel: viewModel,
                             onToggle: {
                                 onSubTaskToggle(subTask)
                             }
@@ -237,7 +270,7 @@ struct PlanParentTaskCard: View {
             }
         }
         .padding()
-        .background(Color.white)
+        .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
         .contentShape(Rectangle())
@@ -284,6 +317,7 @@ struct PlanParentTaskCard: View {
 
 struct PlanSubTaskRow: View {
     let task: TaskItem
+    let viewModel: TaskViewModel
     let onToggle: () -> Void
     
     private var timeRangeText: String {
@@ -296,25 +330,61 @@ struct PlanSubTaskRow: View {
         return "-"
     }
     
+    private func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+    
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .center, spacing: 12) {
+            // 1. 完了チェックボックス
             Button(action: onToggle) {
                 Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                    .font(.title2)
                     .foregroundColor(task.isCompleted ? .teal : .gray)
-                    .font(.subheadline)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.plain) // 行全体のタップと干渉しないように
             
+            // 2. タスク名
             Text(task.title)
                 .font(.body)
                 .strikethrough(task.isCompleted)
                 .foregroundColor(task.isCompleted ? .secondary : .primary)
+                .lineLimit(1)
+                .truncationMode(.tail)
             
-            Spacer()
+            Spacer() // これで時間を右端に寄せる
             
-            Text(timeRangeText)
-                .font(.caption)
-                .foregroundColor(.secondary)
+            // 3. 時間情報（右寄せ・縦積み）
+            VStack(alignment: .trailing, spacing: 2) {
+                // 予定時間
+                if let startTime = task.currentStartTime,
+                   let endTime = task.currentEndTime {
+                    Text("\(formatTime(startTime)) - \(formatTime(endTime))")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else {
+                    Text("未設定")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                // 実績時間（あれば）
+                if let actualStart = task.actualStartTime {
+                    if let actualEnd = task.actualEndTime {
+                        // 完了時
+                        Text("\(formatTime(actualStart)) - \(formatTime(actualEnd))")
+                            .font(.caption)
+                            .foregroundColor(viewModel.actualTimeColor(for: task))
+                    } else {
+                        // 進行中
+                        Text("\(formatTime(actualStart)) - ...")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                }
+            }
         }
         .padding(.vertical, 4)
     }

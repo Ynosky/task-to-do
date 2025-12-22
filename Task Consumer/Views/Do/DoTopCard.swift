@@ -22,7 +22,7 @@ struct DoTopCard: View {
                     .foregroundColor(.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.white)
+            .background(Color(.secondarySystemGroupedBackground))
             .cornerRadius(20)
             .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
         } else {
@@ -85,7 +85,7 @@ struct DoTopCardContent: View {
     }
     
     var body: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: 20) {
             // 1. 親タスク名（最上部）
             if let parentTitle = viewModel.selectedParentTask?.title {
                 Text(parentTitle)
@@ -110,7 +110,7 @@ struct DoTopCardContent: View {
                         .foregroundColor(isOverdue ? .red : .primary)
                         .multilineTextAlignment(.center)
                         .lineLimit(1)
-                        .padding(.vertical, -10)
+                        .padding(.vertical, 12)
                 } else {
                     // アクティブなタスクがない場合（全完了など）
                     Text("Complete")
@@ -118,7 +118,7 @@ struct DoTopCardContent: View {
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                         .lineLimit(1)
-                        .padding(.vertical, -10)
+                        .padding(.vertical, 12)
                 }
             }
             
@@ -136,7 +136,11 @@ struct DoTopCardContent: View {
             HStack(spacing: 20) {
                 // Start Button
                 Button(action: {
-                    print("Start tapped")
+                    if let activeTask = activeTask {
+                        Task { @MainActor in
+                            viewModel.startTask(activeTask)
+                        }
+                    }
                 }) {
                     Label("Start", systemImage: "play.fill")
                         .font(.headline)
@@ -146,25 +150,31 @@ struct DoTopCardContent: View {
                         .foregroundColor(.white)
                         .cornerRadius(12)
                 }
+                .disabled(activeTask == nil)
                 
                 // Finish Button
                 Button(action: {
-                    print("Finish tapped")
+                    if let activeTask = activeTask {
+                        Task { @MainActor in
+                            viewModel.finishTask(activeTask)
+                        }
+                    }
                 }) {
                     Label("Finish", systemImage: "checkmark")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()
                         .background(Color.primary)
-                        .foregroundColor(.white)
+                        .foregroundColor(Color(.systemBackground))
                         .cornerRadius(12)
                 }
+                .disabled(activeTask == nil)
             }
             .padding(.horizontal, 20)
         }
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.white)
+        .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(20)
         .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
     }

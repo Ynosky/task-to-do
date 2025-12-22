@@ -59,7 +59,7 @@ struct DateStripView: View {
             )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.white)
+        .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(20)
         .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
     }

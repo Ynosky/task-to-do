@@ -33,6 +33,10 @@ final class TaskItem {
     var currentStartTime: Date? // 計算された現在の開始時間
     var currentEndTime: Date? // 計算された現在の終了時間
     
+    // MARK: - 実績時間（実際の開始・終了時刻）
+    var actualStartTime: Date? // 実際の開始時刻（Startボタンで記録）
+    var actualEndTime: Date? // 実際の終了時刻（Finishボタンで記録）
+    
     // MARK: - Computed Properties
     
     /// 有効な所要時間を計算
@@ -70,7 +74,9 @@ final class TaskItem {
         currentEndTime: Date? = nil,
         initialPlannedDuration: Int? = nil,
         initialStartTime: Date? = nil,
-        initialEndTime: Date? = nil
+        initialEndTime: Date? = nil,
+        actualStartTime: Date? = nil,
+        actualEndTime: Date? = nil
     ) {
         self.id = id
         self.title = title
@@ -88,6 +94,8 @@ final class TaskItem {
         self.initialPlannedDuration = initialPlannedDuration
         self.initialStartTime = initialStartTime
         self.initialEndTime = initialEndTime
+        self.actualStartTime = actualStartTime
+        self.actualEndTime = actualEndTime
     }
 }
 
