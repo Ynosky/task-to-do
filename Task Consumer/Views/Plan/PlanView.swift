@@ -53,6 +53,7 @@ struct PlanView: View {
                     DateStripView(
                         selectedDate: $selectedDate,
                         displayDates: displayDates,
+                        viewModel: viewModel,
                         onDateSelected: { date in
                             selectedDate = date
                             refreshSchedule()

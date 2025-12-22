@@ -10,28 +10,17 @@ import SwiftUI
 struct DateStripView: View {
     @Binding var selectedDate: Date
     let displayDates: [Date]
+    let viewModel: TaskViewModel
     let onDateSelected: (Date) -> Void
     
-    private var monthText: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM"
-        formatter.locale = Locale(identifier: "ja_JP")
-        return formatter.string(from: selectedDate)
-    }
-    
     var body: some View {
-        VStack(spacing: 12) {
-            // 月表示
-            Text(monthText)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            
-            // 5日分の日付を横並び
+        VStack(spacing: 0) {
             HStack(spacing: 0) {
                 ForEach(displayDates, id: \.self) { date in
                     PlanDateButton(
                         date: date,
                         isSelected: Calendar.current.isDate(date, inSameDayAs: selectedDate),
+                        loadLevel: viewModel.getTaskLoadLevel(for: date),
                         onTap: {
                             selectedDate = date
                             onDateSelected(date)
@@ -58,7 +47,8 @@ struct DateStripView: View {
                     }
             )
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
         .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(20)
         .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
@@ -68,8 +58,10 @@ struct DateStripView: View {
 struct PlanDateButton: View {
     let date: Date
     let isSelected: Bool
+    let loadLevel: Int // 0:なし, 1:少, 2:中, 3:多
     let onTap: () -> Void
     
+    // 曜日 (例: "Sat")
     private var dayOfWeek: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "E"
@@ -77,27 +69,60 @@ struct PlanDateButton: View {
         return formatter.string(from: date)
     }
     
-    private var day: String {
+    // 日付 (通常: "21", 選択時: "12/21")
+    private var dateText: String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "d"
+        if isSelected {
+            formatter.dateFormat = "M/d" // 選択時
+        } else {
+            formatter.dateFormat = "d"   // 通常時
+        }
         return formatter.string(from: date)
+    }
+    
+    private var indicatorColor: Color {
+        if isSelected {
+            return .white
+        } else {
+            switch loadLevel {
+            case 3: return .teal
+            case 2: return .teal.opacity(0.7)
+            case 1: return .teal.opacity(0.4)
+            default: return .clear
+            }
+        }
     }
     
     var body: some View {
         Button(action: onTap) {
-            VStack(spacing: 4) {
+            VStack(spacing: 6) {
+                // 曜日
                 Text(dayOfWeek)
                     .font(.caption2)
-                    .foregroundColor(isSelected ? .white : .secondary)
+                    .fontWeight(.medium)
+                    .foregroundColor(isSelected ? .white.opacity(0.9) : .secondary)
                 
-                Text(day)
-                    .font(.headline)
+                // 日付 (選択時は "12/21", 通常は "21")
+                Text(dateText)
+                    .font(isSelected ? .headline : .body) // 選択時は少し大きく強調
+                    .fontWeight(.bold)
                     .foregroundColor(isSelected ? .white : .primary)
+                    .contentTransition(.numericText())
+                
+                // タスク量ドット
+                Circle()
+                    .fill(indicatorColor)
+                    .frame(width: 5, height: 5)
+                    .opacity(loadLevel > 0 || isSelected ? 1 : 0)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(isSelected ? Color.teal : Color.clear)
-            .cornerRadius(12)
+            .padding(.vertical, 10)
+            .background(
+                // 選択時の背景 (角丸長方形)
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(isSelected ? Color.teal : Color.clear)
+            )
+            .contentShape(Rectangle()) // タップ領域を広げる
         }
         .buttonStyle(.plain)
     }

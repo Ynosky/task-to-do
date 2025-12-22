@@ -861,6 +861,24 @@ final class TaskViewModel {
         return try modelContext.fetch(descriptor)
     }
     
+    /// 指定日のタスク量レベルを取得（0:なし, 1:少, 2:中, 3:多）
+    func getTaskLoadLevel(for date: Date) -> Int {
+        do {
+            // その日の全タスクを取得（未完了含む）
+            let tasks = try fetchAllTasks(for: date)
+            let totalMinutes = tasks.reduce(0) { $0 + $1.effectiveDuration }
+            
+            switch totalMinutes {
+            case 0: return 0
+            case 1..<60: return 1   // 1時間未満
+            case 60..<180: return 2 // 3時間未満
+            default: return 3       // 3時間以上
+            }
+        } catch {
+            return 0
+        }
+    }
+    
     // MARK: - 実績時間管理
     
     /// タスクを開始する（実績開始時刻を記録）

@@ -84,55 +84,70 @@ struct DoTopCardContent: View {
         }
     }
     
+    // 実行中かどうかを判定
+    private var isRunning: Bool {
+        guard let task = activeTask else { return false }
+        // 開始していて、まだ終了していない
+        return task.actualStartTime != nil && task.actualEndTime == nil
+    }
+    
     var body: some View {
-        VStack(spacing: 20) {
-            // 1. 親タスク名（最上部）
+        VStack(spacing: 0) {
+            // 1. 親タスク名（上部固定）
             if let parentTitle = viewModel.selectedParentTask?.title {
                 Text(parentTitle)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
+                    .padding(.top, 12)
+                    .padding(.horizontal, 16)
             }
             
-            // 2. デジタル時計（中央・大）
-            TimelineView(.periodic(from: .now, by: 1.0)) { context in
-                let now = context.date
-                
-                if let activeTask = activeTask {
-                    let remaining = calculateRemainingTime(for: activeTask, at: now)
-                    let isOverdue = remaining < 0
-                    let timeString = formatRemainingTime(remaining)
+            Spacer()
+            
+            // 2. 中央部：デジタル時計と子タスク名
+            VStack(spacing: 8) {
+                // デジタル時計
+                TimelineView(.periodic(from: .now, by: 1.0)) { context in
+                    let now = context.date
                     
-                    Text(timeString)
-                        .font(.system(size: 70, weight: .bold, design: .monospaced))
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
-                        .foregroundColor(isOverdue ? .red : .primary)
+                    if let activeTask = activeTask {
+                        let remaining = calculateRemainingTime(for: activeTask, at: now)
+                        let isOverdue = remaining < 0
+                        let timeString = formatRemainingTime(remaining)
+                        
+                        Text(timeString)
+                            .font(.system(size: 60, weight: .bold, design: .monospaced))
+                            .monospacedDigit()
+                            .contentTransition(.numericText())
+                            .foregroundColor(isOverdue ? .red : .primary)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(1)
+                    } else {
+                        // アクティブなタスクがない場合（全完了など）
+                        Text("Complete")
+                            .font(.system(size: 60, weight: .bold, design: .monospaced))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(1)
+                    }
+                }
+                
+                // 現在の子タスク名
+                let activeTaskTitle = viewModel.currentActiveTaskTitle
+                if !activeTaskTitle.isEmpty && activeTaskTitle != "No Task Selected" {
+                    Text(activeTaskTitle)
+                        .font(.title2)
+                        .bold()
+                        .foregroundColor(.primary)
                         .multilineTextAlignment(.center)
-                        .lineLimit(1)
-                        .padding(.vertical, 12)
-                } else {
-                    // アクティブなタスクがない場合（全完了など）
-                    Text("Complete")
-                        .font(.system(size: 70, weight: .bold, design: .monospaced))
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(1)
-                        .padding(.vertical, 12)
+                        .lineLimit(2)
                 }
             }
             
-            // 3. 現在の子タスク名（時計の下）
-            let activeTaskTitle = viewModel.currentActiveTaskTitle
-            if !activeTaskTitle.isEmpty && activeTaskTitle != "No Task Selected" {
-                Text(activeTaskTitle)
-                    .font(.title2)
-                    .bold()
-                    .foregroundColor(.primary)
-                    .multilineTextAlignment(.center)
-            }
+            Spacer()
             
-            // 4. 操作ボタン（Start / Finish）
+            // 3. 操作ボタン（下部固定）
             HStack(spacing: 20) {
                 // Start Button
                 Button(action: {
@@ -171,11 +186,15 @@ struct DoTopCardContent: View {
                 .disabled(activeTask == nil)
             }
             .padding(.horizontal, 20)
+            .padding(.bottom, 16)
         }
-        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(isRunning ? Color.teal.opacity(0.15) : Color(.secondarySystemGroupedBackground))
         .cornerRadius(20)
-        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(isRunning ? Color.teal : Color.clear, lineWidth: 3)
+        )
+        .shadow(color: isRunning ? Color.teal.opacity(0.3) : Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
     }
 }

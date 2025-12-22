@@ -25,7 +25,7 @@ struct TaskEditView: View {
     @State private var parentTask: TaskItem?
     @State private var availableParents: [TaskItem] = []
     
-    private let durationOptions = [15, 30, 45, 60, 90, 120, 180, 240]
+    private let durationOptions = Array(stride(from: 5, through: 240, by: 5)) // 5分から240分まで5分刻み
     
     var isEditing: Bool {
         task != nil
