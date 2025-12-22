@@ -113,13 +113,16 @@ struct DoSubTaskRow: View {
             }
             .buttonStyle(.plain) // 行全体のタップと干渉しないように
             
-            // 2. タスク名（完了時は不透明度とイタリックを適用）
+            // 2. タスク名（完了時は沈み込みアニメーションを適用）
             Text(task.title)
                 .font(.body)
                 .italic(task.isCompleted) // 完了時はイタリック
                 .strikethrough(task.isCompleted)
                 .foregroundColor(task.isCompleted ? AppTheme.completed(for: colorScheme) : AppTheme.textPrimary(for: colorScheme))
-                .opacity(task.isCompleted ? (colorScheme == .dark ? 0.1 : 0.2) : 1.0) // 完了時は極限まで不透明度を下げる
+                .opacity(task.isCompleted ? (colorScheme == .dark ? 0.9 : 0.15) : 1.0) // Deep: 0.9（可読度最大限向上）, Paper: 0.15
+                .saturation(task.isCompleted && colorScheme == .dark ? 1.0 : 1) // Deep完了時は色を完全に戻す
+                // blurとoffsetを削除して可読性を最大化
+                .animation(.easeInOut(duration: 1.0), value: task.isCompleted) // 1秒のゆっくりとしたアニメーション
                 .lineLimit(1)
                 .truncationMode(.tail)
             
@@ -157,6 +160,10 @@ struct DoSubTaskRow: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
+        .opacity(task.isCompleted && colorScheme == .dark ? 0.9 : 1.0) // Deep完了時は0.9（可読度最大限向上）
+        .saturation(task.isCompleted && colorScheme == .dark ? 1.0 : 1) // Deep完了時は色を完全に戻す
+        // blurとoffsetを削除して可読性を最大化
+        .animation(.easeInOut(duration: 1.0), value: task.isCompleted) // 1秒のゆっくりとしたアニメーション
         .contentShape(Rectangle()) // タップ領域確保
         .onTapGesture {
             onEdit()

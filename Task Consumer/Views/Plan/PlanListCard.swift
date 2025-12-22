@@ -162,9 +162,16 @@ struct PlanListCard: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(20)
-        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+        .background(Color.clear)
+        .overlay(
+            // 極細の境界線のみ（Deepモードのみ）
+            Group {
+                if colorScheme == .dark {
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                }
+            }
+        )
     }
 }
 
@@ -250,7 +257,10 @@ struct PlanParentTaskCard: View {
                     .font(.headline)
                     .italic(task.isCompleted) // 完了時はイタリック
                     .foregroundColor(task.isCompleted ? AppTheme.completed(for: colorScheme) : AppTheme.textPrimary(for: colorScheme))
-                    .opacity(task.isCompleted ? (colorScheme == .dark ? 0.1 : 0.2) : 1.0) // 完了時は極限まで不透明度を下げる
+                    .opacity(task.isCompleted ? (colorScheme == .dark ? 0.9 : 0.15) : 1.0) // Deep: 0.9（可読度最大限向上）, Paper: 0.15
+                    .saturation(task.isCompleted && colorScheme == .dark ? 1.0 : 1) // Deep完了時は色を完全に戻す
+                    // blurとoffsetを削除して可読性を最大化
+                    .animation(.easeInOut(duration: 1.0), value: task.isCompleted) // 1秒のゆっくりとしたアニメーション
                 
                 Spacer()
                 
@@ -334,8 +344,11 @@ struct PlanParentTaskCard: View {
                 }
             }
         }
+        .opacity(task.isCompleted && colorScheme == .dark ? 0.9 : 1.0) // Deep完了時は0.9（可読度最大限向上）
+        .saturation(task.isCompleted && colorScheme == .dark ? 1.0 : 1) // Deep完了時は色を完全に戻す
+        // blurとoffsetを削除して可読性を最大化
+        .animation(.easeInOut(duration: 1.0), value: task.isCompleted) // 1秒のゆっくりとしたアニメーション
         .cornerRadius(12)
-        .shadow(color: colorScheme == .dark ? Color.black.opacity(0.3) : Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
         .contentShape(Rectangle())
         .onTapGesture {
             // タスクを選択してDoViewに遷移
@@ -467,13 +480,16 @@ struct PlanSubTaskRow: View {
             }
             .buttonStyle(.plain) // 行全体のタップと干渉しないように
             
-            // 2. タスク名（完了時は不透明度とイタリックを適用）
+            // 2. タスク名（完了時は沈み込みアニメーションを適用）
             Text(task.title)
                 .font(.body)
                 .italic(task.isCompleted) // 完了時はイタリック
                 .strikethrough(task.isCompleted)
                 .foregroundColor(task.isCompleted ? AppTheme.completed(for: colorScheme) : AppTheme.textPrimary(for: colorScheme))
-                .opacity(task.isCompleted ? (colorScheme == .dark ? 0.1 : 0.2) : 1.0) // 完了時は極限まで不透明度を下げる
+                .opacity(task.isCompleted ? (colorScheme == .dark ? 0.9 : 0.15) : 1.0) // Deep: 0.9（可読度最大限向上）, Paper: 0.15
+                .saturation(task.isCompleted && colorScheme == .dark ? 1.0 : 1) // Deep完了時は色を完全に戻す
+                // blurとoffsetを削除して可読性を最大化
+                .animation(.easeInOut(duration: 1.0), value: task.isCompleted) // 1秒のゆっくりとしたアニメーション
                 .lineLimit(1)
                 .truncationMode(.tail)
             
@@ -510,6 +526,10 @@ struct PlanSubTaskRow: View {
             }
         }
         .padding(.vertical, 4)
+        .opacity(task.isCompleted && colorScheme == .dark ? 0.9 : 1.0) // Deep完了時は0.9（可読度最大限向上）
+        .saturation(task.isCompleted && colorScheme == .dark ? 1.0 : 1) // Deep完了時は色を完全に戻す
+        // blurとoffsetを削除して可読性を最大化
+        .animation(.easeInOut(duration: 1.0), value: task.isCompleted) // 1秒のゆっくりとしたアニメーション
         .contextMenu {
             // 削除
             Button(role: .destructive) {
