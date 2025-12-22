@@ -16,6 +16,7 @@ struct DoBottomCard: View {
     let onTaskToggle: (TaskItem) -> Void
     let onAddTask: () -> Void
     let onTaskEdit: (TaskItem) -> Void
+    @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
         VStack(spacing: 0) {
@@ -26,10 +27,10 @@ struct DoBottomCard: View {
                         VStack(spacing: 16) {
                             Image(systemName: "list.bullet")
                                 .font(.system(size: 40))
-                                .foregroundColor(.secondary)
+                                .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                             Text("子タスクがありません")
                                 .font(.subheadline)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 20)
@@ -58,9 +59,9 @@ struct DoBottomCard: View {
             .id(refreshID) // refreshIDが変わるたびにこのViewを強制再描画
         }
         .frame(maxWidth: .infinity)
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(AppTheme.cardBackground(for: colorScheme))
         .cornerRadius(20)
-        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+        .shadow(color: colorScheme == .dark ? Color.black.opacity(0.3) : Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
     }
 }
 
@@ -70,6 +71,7 @@ struct DoSubTaskRow: View {
     let selectedDate: Date
     let onToggle: () -> Void
     let onEdit: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
     
     private var canMoveUp: Bool {
         guard let parent = task.parent,
@@ -107,15 +109,17 @@ struct DoSubTaskRow: View {
             Button(action: onToggle) {
                 Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.title2)
-                    .foregroundColor(task.isCompleted ? .teal : .gray)
+                    .foregroundColor(task.isCompleted ? AppTheme.accent(for: colorScheme) : AppTheme.textTertiary(for: colorScheme))
             }
             .buttonStyle(.plain) // 行全体のタップと干渉しないように
             
-            // 2. タスク名
+            // 2. タスク名（完了時は不透明度とイタリックを適用）
             Text(task.title)
                 .font(.body)
+                .italic(task.isCompleted) // 完了時はイタリック
                 .strikethrough(task.isCompleted)
-                .foregroundColor(task.isCompleted ? .secondary : .primary)
+                .foregroundColor(task.isCompleted ? AppTheme.completed(for: colorScheme) : AppTheme.textPrimary(for: colorScheme))
+                .opacity(task.isCompleted ? (colorScheme == .dark ? 0.1 : 0.2) : 1.0) // 完了時は極限まで不透明度を下げる
                 .lineLimit(1)
                 .truncationMode(.tail)
             
@@ -128,11 +132,11 @@ struct DoSubTaskRow: View {
                    let endTime = task.currentEndTime {
                     Text("\(formatTime(startTime)) - \(formatTime(endTime))")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                 } else {
                     Text("未設定")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                 }
                 
                 // 実績時間（あれば）
@@ -194,17 +198,18 @@ struct DoSubTaskRow: View {
 
 struct DoAddTaskRow: View {
     let onAdd: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
         Button(action: onAdd) {
             HStack(spacing: 12) {
                 Image(systemName: "plus.square")
-                    .foregroundColor(.teal)
+                    .foregroundColor(AppTheme.accent(for: colorScheme))
                     .font(.title3)
                 
                 Text("Add Subtask")
                     .font(.body)
-                    .foregroundColor(.primary)
+                    .foregroundColor(AppTheme.textPrimary(for: colorScheme))
                 
                 Spacer()
             }

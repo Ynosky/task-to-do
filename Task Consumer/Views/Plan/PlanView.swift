@@ -42,11 +42,30 @@ struct PlanView: View {
         viewModel.getDayStartTime(for: selectedDate)
     }
     
+    @Environment(\.colorScheme) private var colorScheme
+    
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                Color(.systemGroupedBackground)
+                // Deep/Paperテーマの背景
+                if colorScheme == .dark {
+                    // Deep: 放射状グラデーション
+                    RadialGradient(
+                        colors: [
+                            AppTheme.Deep.background,
+                            AppTheme.Deep.backgroundSecondary,
+                            AppTheme.Deep.background
+                        ],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 800
+                    )
                     .ignoresSafeArea()
+                } else {
+                    // Paper: セピアクリーム背景
+                    AppTheme.Paper.background
+                        .ignoresSafeArea()
+                }
                 
                 VStack(spacing: 0) {
                     // 上部カード: Date Selector

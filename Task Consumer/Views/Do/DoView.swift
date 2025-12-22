@@ -31,12 +31,30 @@ struct DoView: View {
         viewModel.getSubTasks(for: viewModel.selectedParentTask)
     }
     
+    @Environment(\.colorScheme) private var colorScheme
+    
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // 背景色
-                Color(.systemGroupedBackground)
+                // Deep/Paperテーマの背景
+                if colorScheme == .dark {
+                    // Deep: 放射状グラデーション
+                    RadialGradient(
+                        colors: [
+                            AppTheme.Deep.background,
+                            AppTheme.Deep.backgroundSecondary,
+                            AppTheme.Deep.background
+                        ],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 800
+                    )
                     .ignoresSafeArea()
+                } else {
+                    // Paper: セピアクリーム背景
+                    AppTheme.Paper.background
+                        .ignoresSafeArea()
+                }
                 
                 VStack(spacing: 0) {
                     // 上部カード（Focus Area）

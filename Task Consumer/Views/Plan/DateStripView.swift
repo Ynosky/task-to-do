@@ -12,6 +12,7 @@ struct DateStripView: View {
     let displayDates: [Date]
     let viewModel: TaskViewModel
     let onDateSelected: (Date) -> Void
+    @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
         VStack(spacing: 0) {
@@ -20,10 +21,12 @@ struct DateStripView: View {
                     PlanDateButton(
                         date: date,
                         isSelected: Calendar.current.isDate(date, inSameDayAs: selectedDate),
-                        loadLevel: viewModel.getTaskLoadLevel(for: date),
+                        taskCount: getTaskCount(for: date),
                         onTap: {
-                            selectedDate = date
-                            onDateSelected(date)
+                            withAnimation(.easeInOut(duration: 1.0)) {
+                                selectedDate = date
+                                onDateSelected(date)
+                            }
                         }
                     )
                     .frame(maxWidth: .infinity)
@@ -35,13 +38,17 @@ struct DateStripView: View {
                         let threshold: CGFloat = 50
                         if value.translation.width > threshold {
                             if let previousDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) {
-                                selectedDate = previousDate
-                                onDateSelected(previousDate)
+                                withAnimation(.easeInOut(duration: 1.0)) {
+                                    selectedDate = previousDate
+                                    onDateSelected(previousDate)
+                                }
                             }
                         } else if value.translation.width < -threshold {
                             if let nextDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) {
-                                selectedDate = nextDate
-                                onDateSelected(nextDate)
+                                withAnimation(.easeInOut(duration: 1.0)) {
+                                    selectedDate = nextDate
+                                    onDateSelected(nextDate)
+                                }
                             }
                         }
                     }
@@ -49,17 +56,34 @@ struct DateStripView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
-        .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(20)
-        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+        .background(Color.clear) // 背景を透明に
+        .overlay(
+            // 下部に極薄の境界線
+            Rectangle()
+                .frame(height: 1)
+                .foregroundColor(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05))
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        )
+    }
+    
+    // タスク数を取得（loadLevelから推測、または直接取得）
+    private func getTaskCount(for date: Date) -> Int {
+        do {
+            let tasks = try viewModel.fetchAllTasks(for: date)
+            return tasks.count
+        } catch {
+            return 0
+        }
     }
 }
 
 struct PlanDateButton: View {
     let date: Date
     let isSelected: Bool
-    let loadLevel: Int // 0:なし, 1:少, 2:中, 3:多
+    let taskCount: Int // タスク数
     let onTap: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var isHovered = false
     
     // 曜日 (例: "Sat")
     private var dayOfWeek: String {
@@ -80,51 +104,88 @@ struct PlanDateButton: View {
         return formatter.string(from: date)
     }
     
-    private var indicatorColor: Color {
-        if isSelected {
-            return .white
-        } else {
-            switch loadLevel {
-            case 3: return .teal
-            case 2: return .teal.opacity(0.7)
-            case 1: return .teal.opacity(0.4)
-            default: return .clear
-            }
+    // タスク量に応じたドット数と色を決定
+    private var dotConfig: (count: Int, opacity: Double, hasGlow: Bool) {
+        switch taskCount {
+        case 0:
+            return (0, 0, false)
+        case 1...2:
+            return (1, 0.3, false)
+        case 3...4:
+            return (2, 0.6, false)
+        default: // 5個以上
+            return (3, 1.0, true)
         }
+    }
+    
+    // 未選択時の不透明度（ホバー時は60%）
+    private var unselectedOpacity: Double {
+        isHovered ? 0.6 : 0.4
     }
     
     var body: some View {
         Button(action: onTap) {
-            VStack(spacing: 6) {
+            VStack(spacing: 8) {
                 // 曜日
                 Text(dayOfWeek)
-                    .font(.caption2)
-                    .fontWeight(.medium)
-                    .foregroundColor(isSelected ? .white.opacity(0.9) : .secondary)
+                    .font(.system(size: 9, weight: .black, design: .default))
+                    .tracking(2) // tracking-widest相当
+                    .foregroundColor(isSelected ? .white : (colorScheme == .dark ? Color.white.opacity(unselectedOpacity) : Color.black.opacity(unselectedOpacity)))
                 
-                // 日付 (選択時は "12/21", 通常は "21")
-                Text(dateText)
-                    .font(isSelected ? .headline : .body) // 選択時は少し大きく強調
-                    .fontWeight(.bold)
-                    .foregroundColor(isSelected ? .white : .primary)
-                    .contentTransition(.numericText())
+                // 日付
+                VStack(spacing: 4) {
+                    Text(dateText)
+                        .font(.system(size: 16, weight: .light))
+                        .foregroundColor(isSelected ? .white : (colorScheme == .dark ? Color.white.opacity(unselectedOpacity) : Color.black.opacity(unselectedOpacity)))
+                        .contentTransition(.numericText())
+                    
+                    // 選択時のシアンのアンダーライン（発光効果付き）
+                    if isSelected {
+                        Rectangle()
+                            .frame(height: 1)
+                            .foregroundColor(AppTheme.accent(for: colorScheme))
+                            .shadow(
+                                color: AppTheme.accent(for: colorScheme).opacity(0.5),
+                                radius: 5,
+                                x: 0,
+                                y: 0
+                            )
+                            .frame(width: 20) // アンダーラインの幅
+                    }
+                }
                 
-                // タスク量ドット
-                Circle()
-                    .fill(indicatorColor)
-                    .frame(width: 5, height: 5)
-                    .opacity(loadLevel > 0 || isSelected ? 1 : 0)
+                // タスク量インジケーター（バイオルミネセンス・ドット）
+                HStack(spacing: 3) {
+                    ForEach(0..<dotConfig.count, id: \.self) { index in
+                        Circle()
+                            .fill(AppTheme.accent(for: colorScheme).opacity(dotConfig.opacity))
+                            .frame(width: 4, height: 4)
+                            .shadow(
+                                color: dotConfig.hasGlow ? AppTheme.accent(for: colorScheme).opacity(0.8) : Color.clear,
+                                radius: 2.5,
+                                x: 0,
+                                y: 0
+                            )
+                    }
+                }
+                .frame(height: 4)
+                .opacity(taskCount > 0 ? 1 : 0)
+                .animation(.easeInOut(duration: 1.0), value: taskCount)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
-            .background(
-                // 選択時の背景 (角丸長方形)
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(isSelected ? Color.teal : Color.clear)
-            )
-            .contentShape(Rectangle()) // タップ領域を広げる
+            .scaleEffect(isSelected ? 1.1 : 1.0) // 選択時はスケールアップ
+            .opacity(isSelected ? 1.0 : unselectedOpacity)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .animation(.easeInOut(duration: 1.0), value: isSelected)
+        .animation(.easeInOut(duration: 0.3), value: isHovered)
+        .onHover { hovering in
+            if !isSelected {
+                isHovered = hovering
+            }
+        }
     }
 }
 

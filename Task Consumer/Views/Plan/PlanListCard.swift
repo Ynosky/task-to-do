@@ -17,6 +17,7 @@ struct PlanListCard: View {
     let onTaskToggle: (TaskItem) -> Void
     let onSubTaskToggle: (TaskItem) -> Void
     let onAddTask: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
     
     init(
         selectedDate: Date,
@@ -76,10 +77,10 @@ struct PlanListCard: View {
             HStack {
                 // ラベル
                 Image(systemName: "clock")
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                 Text("Global Start Time")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                 
                 Spacer()
                 
@@ -96,19 +97,19 @@ struct PlanListCard: View {
                         displayedComponents: .hourAndMinute
                     )
                     .labelsHidden() // ラベルを隠してコンパクトに
-                    .tint(.teal)    // ピッカーの色
+                    .tint(AppTheme.accent(for: colorScheme))    // ピッカーの色
                 }
-                .foregroundColor(.teal) // 文字とアイコンの色
+                .foregroundColor(AppTheme.accent(for: colorScheme)) // 文字とアイコンの色
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
-                .background(Color.teal.opacity(0.1)) // 背景色
+                .background(AppTheme.accent(for: colorScheme).opacity(0.1)) // 背景色
                 .cornerRadius(8)
             }
             .padding(.vertical, 8)
             .padding(.horizontal)
-            .background(Color(.secondarySystemGroupedBackground))
+            .background(AppTheme.cardBackground(for: colorScheme))
             .cornerRadius(12)
-            .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+            .shadow(color: colorScheme == .dark ? Color.black.opacity(0.3) : Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
             
             // 親タスクリスト
             ScrollView {
@@ -146,15 +147,15 @@ struct PlanListCard: View {
                     Button(action: onAddTask) {
                         HStack {
                             Image(systemName: "plus.circle.fill")
-                                .foregroundColor(.teal)
+                                .foregroundColor(AppTheme.accent(for: colorScheme))
                             Text("タスクを追加")
-                                .foregroundColor(.teal)
+                                .foregroundColor(AppTheme.accent(for: colorScheme))
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color(.secondarySystemGroupedBackground))
+                        .background(AppTheme.cardBackground(for: colorScheme))
                         .cornerRadius(12)
-                        .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+                        .shadow(color: colorScheme == .dark ? Color.black.opacity(0.3) : Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
                     }
                 }
                 .padding(.bottom, 16)
@@ -175,6 +176,7 @@ struct PlanParentTaskCard: View {
     let onSubTaskToggle: (TaskItem) -> Void
     
     @State private var showingFixedTimePicker = false
+    @Environment(\.colorScheme) private var colorScheme
     
     private var timeRangeText: String {
         if let startTime = task.currentStartTime,
@@ -246,13 +248,15 @@ struct PlanParentTaskCard: View {
             HStack {
                 Text(task.title)
                     .font(.headline)
-                    .foregroundColor(.primary)
+                    .italic(task.isCompleted) // 完了時はイタリック
+                    .foregroundColor(task.isCompleted ? AppTheme.completed(for: colorScheme) : AppTheme.textPrimary(for: colorScheme))
+                    .opacity(task.isCompleted ? (colorScheme == .dark ? 0.1 : 0.2) : 1.0) // 完了時は極限まで不透明度を下げる
                 
                 Spacer()
                 
                 Button(action: onTaskToggle) {
                     Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                        .foregroundColor(task.isCompleted ? .teal : .gray)
+                        .foregroundColor(task.isCompleted ? AppTheme.accent(for: colorScheme) : AppTheme.textTertiary(for: colorScheme))
                         .font(.title3)
                 }
                 .buttonStyle(.plain)
@@ -265,23 +269,23 @@ struct PlanParentTaskCard: View {
                     if task.fixedStartTime != nil {
                         Image(systemName: "anchor")
                             .font(.caption2)
-                            .foregroundColor(.teal)
+                            .foregroundColor(AppTheme.accent(for: colorScheme))
                     }
                     
                     // 予定時間
                     if let startTime = task.currentStartTime,
                        let endTime = task.currentEndTime {
                         Text("Plan: \(formatTime(startTime)) - \(formatTime(endTime))")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                     } else {
                         Text("Plan: 未設定")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                     }
                     
                     // 実績時間（条件付き表示）
                     if let actStart = task.actualStartTime {
                         Text(" / ")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                         
                         if let actEnd = task.actualEndTime {
                             // 完了時: 青か赤で表示
@@ -298,7 +302,7 @@ struct PlanParentTaskCard: View {
                 
                 Text(durationText)
                     .font(.caption2)
-                    .foregroundColor(.secondary.opacity(0.8))
+                    .foregroundColor(AppTheme.textSecondary(for: colorScheme).opacity(0.8))
             }
             
             // 子タスクリスト
@@ -322,16 +326,16 @@ struct PlanParentTaskCard: View {
         .background {
             ZStack {
                 // 基本の背景色
-                Color(.secondarySystemGroupedBackground)
+                AppTheme.cardBackground(for: colorScheme)
                 
                 // 進行中ならオーブアニメーションを重ねる
                 if let progress = progress {
-                    ProgressOrbBackground(progress: progress)
+                    ProgressOrbBackground(progress: progress, colorScheme: colorScheme)
                 }
             }
         }
         .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+        .shadow(color: colorScheme == .dark ? Color.black.opacity(0.3) : Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
         .contentShape(Rectangle())
         .onTapGesture {
             // タスクを選択してDoViewに遷移
@@ -435,6 +439,7 @@ struct PlanSubTaskRow: View {
     let viewModel: TaskViewModel
     let selectedDate: Date
     let onToggle: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
     
     private var timeRangeText: String {
         if let startTime = task.currentStartTime,
@@ -458,15 +463,17 @@ struct PlanSubTaskRow: View {
             Button(action: onToggle) {
                 Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.title2)
-                    .foregroundColor(task.isCompleted ? .teal : .gray)
+                    .foregroundColor(task.isCompleted ? AppTheme.accent(for: colorScheme) : AppTheme.textTertiary(for: colorScheme))
             }
             .buttonStyle(.plain) // 行全体のタップと干渉しないように
             
-            // 2. タスク名
+            // 2. タスク名（完了時は不透明度とイタリックを適用）
             Text(task.title)
                 .font(.body)
+                .italic(task.isCompleted) // 完了時はイタリック
                 .strikethrough(task.isCompleted)
-                .foregroundColor(task.isCompleted ? .secondary : .primary)
+                .foregroundColor(task.isCompleted ? AppTheme.completed(for: colorScheme) : AppTheme.textPrimary(for: colorScheme))
+                .opacity(task.isCompleted ? (colorScheme == .dark ? 0.1 : 0.2) : 1.0) // 完了時は極限まで不透明度を下げる
                 .lineLimit(1)
                 .truncationMode(.tail)
             
@@ -479,11 +486,11 @@ struct PlanSubTaskRow: View {
                    let endTime = task.currentEndTime {
                     Text("\(formatTime(startTime)) - \(formatTime(endTime))")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                 } else {
                     Text("未設定")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                 }
                 
                 // 実績時間（あれば）
@@ -522,6 +529,7 @@ struct PlanSubTaskRow: View {
 
 struct GapTimeRow: View {
     let duration: TimeInterval
+    @Environment(\.colorScheme) private var colorScheme
     
     private func formatDuration(_ duration: TimeInterval) -> String {
         let totalMinutes = Int(duration / 60)
@@ -543,14 +551,14 @@ struct GapTimeRow: View {
         HStack(spacing: 8) {
             Image(systemName: "cup.and.saucer.fill")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.textSecondary(for: colorScheme))
             Text("休憩・スキマ時間")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.textSecondary(for: colorScheme))
             Spacer()
             Text(formatDuration(duration))
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.textSecondary(for: colorScheme))
         }
         .padding(.vertical, 8)
         .padding(.horizontal, 16)
@@ -643,7 +651,10 @@ struct FixedTimePickerSheet: View {
 
 struct ProgressOrbBackground: View {
     let progress: CGFloat // 0.0 - 1.0
-    let color: Color = .teal
+    let colorScheme: ColorScheme
+    private var color: Color {
+        AppTheme.accent(for: colorScheme)
+    }
     
     var body: some View {
         GeometryReader { geo in

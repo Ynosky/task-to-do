@@ -12,6 +12,7 @@ struct DoTopCard: View {
     @Binding var selectedParentTask: TaskItem?
     let viewModel: TaskViewModel
     let onBack: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
         if parentTasks.isEmpty {
@@ -19,12 +20,12 @@ struct DoTopCard: View {
             VStack {
                 Text("タスクがありません")
                     .font(.headline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.textSecondary(for: colorScheme))
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(.secondarySystemGroupedBackground))
+            .background(AppTheme.cardBackground(for: colorScheme))
             .cornerRadius(20)
-            .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+            .shadow(color: colorScheme == .dark ? Color.black.opacity(0.3) : Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
         } else {
             TabView(selection: $selectedParentTask) {
                 ForEach(parentTasks) { task in
@@ -45,6 +46,7 @@ struct DoTopCardContent: View {
     let parentTask: TaskItem
     let viewModel: TaskViewModel
     let onBack: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
     
     // 現在アクティブなタスク（未完了の最初の子タスク、または子タスクがない場合は親タスク）
     private var activeTask: TaskItem? {
@@ -97,7 +99,7 @@ struct DoTopCardContent: View {
             if let parentTitle = viewModel.selectedParentTask?.title {
                 Text(parentTitle)
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                     .multilineTextAlignment(.center)
                     .padding(.top, 12)
                     .padding(.horizontal, 16)
@@ -120,14 +122,14 @@ struct DoTopCardContent: View {
                             .font(.system(size: 60, weight: .bold, design: .monospaced))
                             .monospacedDigit()
                             .contentTransition(.numericText())
-                            .foregroundColor(isOverdue ? .red : .primary)
+                            .foregroundColor(isOverdue ? .red : AppTheme.textPrimary(for: colorScheme))
                             .multilineTextAlignment(.center)
                             .lineLimit(1)
                     } else {
                         // アクティブなタスクがない場合（全完了など）
                         Text("Complete")
                             .font(.system(size: 60, weight: .bold, design: .monospaced))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                             .multilineTextAlignment(.center)
                             .lineLimit(1)
                     }
@@ -139,7 +141,7 @@ struct DoTopCardContent: View {
                     Text(activeTaskTitle)
                         .font(.title2)
                         .bold()
-                        .foregroundColor(.primary)
+                        .foregroundColor(AppTheme.textPrimary(for: colorScheme))
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
                 }
@@ -161,8 +163,8 @@ struct DoTopCardContent: View {
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.teal)
-                        .foregroundColor(.white)
+                        .background(AppTheme.accent(for: colorScheme))
+                        .foregroundColor(colorScheme == .dark ? AppTheme.Deep.background : .white)
                         .cornerRadius(12)
                 }
                 .disabled(activeTask == nil)
@@ -189,12 +191,12 @@ struct DoTopCardContent: View {
             .padding(.bottom, 16)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(isRunning ? Color.teal.opacity(0.15) : Color(.secondarySystemGroupedBackground))
+        .background(isRunning ? AppTheme.accent(for: colorScheme).opacity(0.15) : AppTheme.cardBackground(for: colorScheme))
         .cornerRadius(20)
         .overlay(
             RoundedRectangle(cornerRadius: 20)
-                .stroke(isRunning ? Color.teal : Color.clear, lineWidth: 3)
+                .stroke(isRunning ? AppTheme.accent(for: colorScheme) : Color.clear, lineWidth: 3)
         )
-        .shadow(color: isRunning ? Color.teal.opacity(0.3) : Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+        .shadow(color: isRunning ? AppTheme.accent(for: colorScheme).opacity(0.3) : (colorScheme == .dark ? Color.black.opacity(0.3) : Color.black.opacity(0.1)), radius: 10, x: 0, y: 5)
     }
 }

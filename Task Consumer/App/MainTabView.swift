@@ -56,7 +56,7 @@ struct MainTabView: View {
                 }
                 .tag(3)
         }
-        .tint(.teal)
+        .tint(colorScheme == .dark ? AppTheme.Deep.accent : AppTheme.Paper.accent)
         .preferredColorScheme(colorScheme)
     }
 }
@@ -65,6 +65,7 @@ struct MainTabView: View {
 
 struct StatsView: View {
     @Query(sort: \TaskItem.date, order: .forward) private var tasks: [TaskItem]
+    @Environment(\.colorScheme) private var colorScheme
     
     // 表示モード管理
     @State private var chartDataType: ChartDataType = .timeSaved
@@ -253,7 +254,7 @@ struct StatsView: View {
                             title: "Time Saved",
                             value: formatDuration(calculateTotalTimeSaved(days: 30)),
                             icon: "hourglass.bottomhalf.filled",
-                            color: .teal
+                            color: AppTheme.accent(for: colorScheme)
                         )
                         
                         SummaryCard(
@@ -273,7 +274,7 @@ struct StatsView: View {
                     chartSection
                 }
             }
-            .background(Color(.systemGroupedBackground))
+            .background(colorScheme == .dark ? AppTheme.Deep.background : AppTheme.Paper.background)
             .toolbar(.hidden, for: .navigationBar)
         }
     }
@@ -291,7 +292,7 @@ struct StatsView: View {
                     
                     Text("Target: 80% - 120%")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                 }
                 
                 Spacer()
@@ -314,10 +315,10 @@ struct StatsView: View {
                 VStack(spacing: 12) {
                     Image(systemName: "chart.line.downtrend.xyaxis")
                         .font(.system(size: 40))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                     Text("No sufficient data yet")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                 }
                 .frame(height: 250)
                 .frame(maxWidth: .infinity)
@@ -343,7 +344,7 @@ struct StatsView: View {
                             x: .value("Date", point.date, unit: .day),
                             y: .value("Accuracy", point.accuracy)
                         )
-                        .foregroundStyle(.teal)
+                        .foregroundStyle(AppTheme.accent(for: colorScheme))
                         .symbol(Circle())
                         .interpolationMethod(.catmullRom)
                     }
@@ -369,7 +370,7 @@ struct StatsView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(AppTheme.cardBackground(for: colorScheme))
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.05), radius: 5)
         .padding(.horizontal)
@@ -404,10 +405,10 @@ struct StatsView: View {
                 VStack(spacing: 12) {
                     Image(systemName: "chart.bar")
                         .font(.system(size: 40))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                     Text("No data available")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                 }
                 .frame(height: 300)
                 .frame(maxWidth: .infinity)
@@ -418,7 +419,7 @@ struct StatsView: View {
                     ForEach(chartData) { point in
                         let value = chartDataType == .timeSaved ? point.timeSaved : point.workTime
                         let color = chartDataType == .timeSaved
-                            ? (value >= 0 ? Color.teal : Color.red)
+                            ? (value >= 0 ? AppTheme.accent(for: colorScheme) : Color.red)
                             : Color.blue
                         
                         BarMark(
@@ -449,7 +450,7 @@ struct StatsView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(AppTheme.cardBackground(for: colorScheme))
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.05), radius: 5)
         .padding(.horizontal)
@@ -495,6 +496,7 @@ struct SummaryCard: View {
     let value: String
     let icon: String
     let color: Color
+    @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -512,13 +514,13 @@ struct SummaryCard: View {
             
             Text(title)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.textSecondary(for: colorScheme))
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(AppTheme.cardBackground(for: colorScheme))
         .cornerRadius(16)
-        .shadow(color: .black.opacity(0.05), radius: 5)
+        .shadow(color: colorScheme == .dark ? Color.black.opacity(0.3) : Color.black.opacity(0.05), radius: 5)
     }
 }
 
