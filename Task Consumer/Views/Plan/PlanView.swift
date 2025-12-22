@@ -1,6 +1,6 @@
 //
 //  PlanView.swift
-//  Task Consumer
+//  Task ToDo
 //
 //  Created by ryunosuke sato on 2025/12/21.
 //
@@ -14,6 +14,7 @@ struct PlanView: View {
     @State private var selectedDate = Date()
     @State private var showingTaskEdit = false
     @State private var showingAddTask = false
+    @State private var showingCalendar = false
     @State private var editingTask: TaskItem?
     @State private var errorMessage: String?
     @State private var showingError = false
@@ -68,6 +69,25 @@ struct PlanView: View {
                 }
                 
                 VStack(spacing: 0) {
+                    // 日付選択ボタン
+                    Button(action: { showingCalendar = true }) {
+                        HStack {
+                            Text(formattedFullDate)
+                                .font(.title2)
+                                .bold()
+                                .foregroundColor(.primary)
+                            
+                            Image(systemName: "chevron.down.circle.fill")
+                                .font(.subheadline)
+                                .foregroundColor(AppTheme.accent(for: colorScheme))
+                            
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 4)
+                    }
+                    .buttonStyle(.plain)
+                    
                     // 上部カード: Date Selector
                     DateStripView(
                         selectedDate: $selectedDate,
@@ -80,7 +100,7 @@ struct PlanView: View {
                     )
                     .frame(height: geometry.size.height / 6)
                     .padding(.horizontal, 16)
-                    .padding(.top, 16)
+                    .padding(.top, 8)
                     
                     // 下部カード: Planning Area
                     PlanListCard(
@@ -107,6 +127,9 @@ struct PlanView: View {
                     .padding(.bottom, 16)
                 }
             }
+        }
+        .sheet(isPresented: $showingCalendar) {
+            CalendarSheet(selectedDate: $selectedDate, viewModel: viewModel)
         }
         .sheet(isPresented: $showingAddTask) {
             AddTaskSheet(
@@ -156,6 +179,14 @@ struct PlanView: View {
     }
     
     // MARK: - ヘルパーメソッド
+    
+    // 選択中の日付をフォーマット（例: "2025年12月21日"）
+    private var formattedFullDate: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy年M月d日"
+        formatter.locale = Locale(identifier: "ja_JP")
+        return formatter.string(from: selectedDate)
+    }
     
     private func loadParentTasks() {
         Task { @MainActor in

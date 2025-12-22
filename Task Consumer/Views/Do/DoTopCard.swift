@@ -1,6 +1,6 @@
 //
 //  DoTopCard.swift
-//  Task Consumer
+//  Task ToDo
 //
 //  Created by ryunosuke sato on 2025/12/21.
 //
@@ -191,12 +191,43 @@ struct DoTopCardContent: View {
             .padding(.bottom, 16)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(isRunning ? AppTheme.accent(for: colorScheme).opacity(0.15) : AppTheme.cardBackground(for: colorScheme))
+        .background(
+            Group {
+                if isRunning {
+                    // 実行中: 各モードに合わせた自然な背景色
+                    if colorScheme == .dark {
+                        // Deepモード: シアンの微かな光彩
+                        AppTheme.Deep.accent.opacity(0.12)
+                    } else {
+                        // Paperモード: インク色の微かな光彩
+                        AppTheme.Paper.accent.opacity(0.08)
+                    }
+                } else {
+                    AppTheme.cardBackground(for: colorScheme)
+                }
+            }
+        )
         .cornerRadius(20)
         .overlay(
             RoundedRectangle(cornerRadius: 20)
-                .stroke(isRunning ? AppTheme.accent(for: colorScheme) : Color.clear, lineWidth: 3)
+                .stroke(
+                    isRunning ? (
+                        colorScheme == .dark 
+                            ? AppTheme.Deep.accent.opacity(0.6) 
+                            : AppTheme.Paper.accent.opacity(0.4)
+                    ) : Color.clear, 
+                    lineWidth: isRunning ? 2.5 : 0
+                )
         )
-        .shadow(color: isRunning ? AppTheme.accent(for: colorScheme).opacity(0.3) : (colorScheme == .dark ? Color.black.opacity(0.3) : Color.black.opacity(0.1)), radius: 10, x: 0, y: 5)
+        .shadow(
+            color: isRunning 
+                ? (colorScheme == .dark 
+                    ? AppTheme.Deep.accent.opacity(0.25) 
+                    : AppTheme.Paper.accent.opacity(0.15))
+                : (colorScheme == .dark ? Color.black.opacity(0.3) : Color.black.opacity(0.1)), 
+            radius: isRunning ? 12 : 10, 
+            x: 0, 
+            y: 5
+        )
     }
 }

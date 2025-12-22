@@ -1,13 +1,13 @@
 //
-//  Task_ConsumerUITests.swift
-//  Task ConsumerUITests
+//  TaskToDoUITests.swift
+//  Task ToDoUITests
 //
 //  Created by ryunosuke sato on 2025/12/21.
 //
 
 import XCTest
 
-final class Task_ConsumerUITests: XCTestCase {
+final class TaskToDoUITests: XCTestCase {
 
     override func setUpWithError() throws {
         // Put setup code here. This method is called before the invocation of each test method in the class.

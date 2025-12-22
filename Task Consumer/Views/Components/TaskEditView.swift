@@ -1,6 +1,6 @@
 //
 //  TaskEditView.swift
-//  Task Consumer
+//  Task ToDo
 //
 //  Created by ryunosuke sato on 2025/12/21.
 //
@@ -20,7 +20,6 @@ struct TaskEditView: View {
     let onDismiss: () -> Void
     
     @State private var title: String = ""
-    @State private var detail: String = ""
     @State private var duration: Int = 30
     @State private var parentTask: TaskItem?
     @State private var availableParents: [TaskItem] = []
@@ -42,9 +41,6 @@ struct TaskEditView: View {
             Form {
                 Section("基本情報") {
                     TextField("タイトル", text: $title)
-                    
-                    TextField("詳細（任意）", text: $detail, axis: .vertical)
-                        .lineLimit(3...6)
                 }
                 
                 Section("所要時間") {
@@ -113,7 +109,6 @@ struct TaskEditView: View {
     private func loadTaskData() {
         if let task = task {
             title = task.title
-            detail = task.detail ?? ""
             // 子タスクがない場合のみmanualDurationを表示
             duration = (task.subTasks?.isEmpty ?? true) ? task.manualDuration : 0
             parentTask = task.parent
@@ -181,7 +176,6 @@ struct TaskEditView: View {
         
         if let existingTask = task {
             existingTask.title = title
-            existingTask.detail = detail.isEmpty ? nil : detail
             
             // 子タスクがない場合のみmanualDurationを更新
             if existingTask.subTasks?.isEmpty ?? true {
@@ -216,7 +210,6 @@ struct TaskEditView: View {
         } else {
             let newTask = TaskItem(
                 title: title,
-                detail: detail.isEmpty ? nil : detail,
                 date: date,
                 parent: parentTask,
                 plannedDuration: duration,

@@ -1,13 +1,13 @@
 //
-//  Task_ConsumerUITestsLaunchTests.swift
-//  Task ConsumerUITests
+//  TaskToDoUITestsLaunchTests.swift
+//  Task ToDoUITests
 //
 //  Created by ryunosuke sato on 2025/12/21.
 //
 
 import XCTest
 
-final class Task_ConsumerUITestsLaunchTests: XCTestCase {
+final class TaskToDoUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true

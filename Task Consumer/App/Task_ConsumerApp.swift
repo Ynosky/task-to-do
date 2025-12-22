@@ -1,6 +1,6 @@
 //
-//  Task_ConsumerApp.swift
-//  Task Consumer
+//  TaskToDoApp.swift
+//  Task ToDo
 //
 //  Created by ryunosuke sato on 2025/12/21.
 //
@@ -9,7 +9,7 @@ import SwiftUI
 import SwiftData
 
 @main
-struct Task_ConsumerApp: App {
+struct TaskToDoApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             TaskItem.self,

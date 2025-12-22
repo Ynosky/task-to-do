@@ -1,6 +1,6 @@
 //
 //  MainTabView.swift
-//  Task Consumer
+//  Task ToDo
 //
 //  Created by ryunosuke sato on 2025/12/21.
 //
@@ -529,28 +529,6 @@ struct SummaryCard: View {
     }
 }
 
-// MARK: - Settings View
-
-struct SettingsView: View {
-    @AppStorage("userInterfaceStyle") private var userInterfaceStyle: String = "light"
-    
-    var body: some View {
-        NavigationStack {
-            List {
-                Section(header: Text("Appearance")) {
-                    Picker("Theme", selection: $userInterfaceStyle) {
-                        Text("Light").tag("light")
-                        Text("Dark").tag("dark")
-                        Text("System").tag("system")
-                    }
-                    .pickerStyle(.segmented)
-                }
-            }
-            .navigationTitle("設定")
-            .scrollContentBackground(.hidden) // リストの背景を透明にして深海パターンが見えるように
-        }
-    }
-}
 
 // MARK: - Sea Pattern Background
 

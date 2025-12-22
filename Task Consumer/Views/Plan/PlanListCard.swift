@@ -1,6 +1,6 @@
 //
 //  PlanListCard.swift
-//  Task Consumer
+//  Task ToDo
 //
 //  Created by ryunosuke sato on 2025/12/21.
 //
@@ -256,8 +256,14 @@ struct PlanParentTaskCard: View {
                 Text(task.title)
                     .font(.headline)
                     .italic(task.isCompleted) // 完了時はイタリック
-                    .foregroundColor(task.isCompleted ? AppTheme.completed(for: colorScheme) : AppTheme.textPrimary(for: colorScheme))
-                    .opacity(task.isCompleted ? (colorScheme == .dark ? 0.9 : 0.15) : 1.0) // Deep: 0.9（可読度最大限向上）, Paper: 0.15
+                    .foregroundColor(
+                        task.isCompleted 
+                            ? (colorScheme == .dark 
+                                ? AppTheme.completed(for: colorScheme) 
+                                : Color.black.opacity(0.5)) // Paperモード: より濃い色で見やすく
+                            : AppTheme.textPrimary(for: colorScheme)
+                    )
+                    .opacity(task.isCompleted ? (colorScheme == .dark ? 0.9 : 1.0) : 1.0) // Deep: 0.9, Paper: 1.0（不透明度はforegroundColorで調整）
                     .saturation(task.isCompleted && colorScheme == .dark ? 1.0 : 1) // Deep完了時は色を完全に戻す
                     // blurとoffsetを削除して可読性を最大化
                     .animation(.easeInOut(duration: 1.0), value: task.isCompleted) // 1秒のゆっくりとしたアニメーション
@@ -485,8 +491,14 @@ struct PlanSubTaskRow: View {
                 .font(.body)
                 .italic(task.isCompleted) // 完了時はイタリック
                 .strikethrough(task.isCompleted)
-                .foregroundColor(task.isCompleted ? AppTheme.completed(for: colorScheme) : AppTheme.textPrimary(for: colorScheme))
-                .opacity(task.isCompleted ? (colorScheme == .dark ? 0.9 : 0.15) : 1.0) // Deep: 0.9（可読度最大限向上）, Paper: 0.15
+                .foregroundColor(
+                    task.isCompleted 
+                        ? (colorScheme == .dark 
+                            ? AppTheme.completed(for: colorScheme) 
+                            : Color.black.opacity(0.5)) // Paperモード: より濃い色で見やすく
+                        : AppTheme.textPrimary(for: colorScheme)
+                )
+                .opacity(task.isCompleted ? (colorScheme == .dark ? 0.9 : 1.0) : 1.0) // Deep: 0.9, Paper: 1.0（不透明度はforegroundColorで調整）
                 .saturation(task.isCompleted && colorScheme == .dark ? 1.0 : 1) // Deep完了時は色を完全に戻す
                 // blurとoffsetを削除して可読性を最大化
                 .animation(.easeInOut(duration: 1.0), value: task.isCompleted) // 1秒のゆっくりとしたアニメーション
