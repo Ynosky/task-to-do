@@ -1,6 +1,6 @@
 //
 //  MainTabView.swift
-//  Task ToDo
+//  Agenda ToDo
 //
 //  Created by ryunosuke sato on 2025/12/21.
 //
@@ -12,6 +12,7 @@ import Charts
 struct MainTabView: View {
     @State private var viewModel = TaskViewModel()
     @AppStorage("userInterfaceStyle") private var userInterfaceStyle: String = "light"
+    @State private var currentLanguage: AppLanguage = LanguageManager.shared.language
     
     private var colorScheme: ColorScheme? {
         switch userInterfaceStyle {
@@ -56,13 +57,29 @@ struct MainTabView: View {
                 }
                 .tag(3)
         }
-        .id(LanguageManager.shared.language)
+        .id(currentLanguage)
         .tint(colorScheme == .dark ? AppTheme.Deep.accent : AppTheme.Paper.accent)
         .preferredColorScheme(colorScheme)
         .background {
             if colorScheme == .dark {
                 SeaPatternBackground()
             }
+        }
+        .onChange(of: viewModel.selectedTab) { oldValue, newValue in
+            // タブが変わった瞬間にフィードバック（軽い衝撃）
+            HapticManager.shared.impact(style: .light)
+        }
+        .onChange(of: LanguageManager.shared.language) { oldValue, newValue in
+            // 言語変更時に即座に反映
+            currentLanguage = newValue
+        }
+        .onAppear {
+            // 初期値の設定
+            currentLanguage = LanguageManager.shared.language
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSLocale.currentLocaleDidChangeNotification)) { _ in
+            // システムの言語変更通知も監視（Appレベルでも処理されるが、念のため）
+            currentLanguage = LanguageManager.shared.language
         }
     }
 }
@@ -233,6 +250,13 @@ struct StatsView: View {
     func generateChartData() -> [ChartDataPoint] {
         let calendar = Calendar.current
         let now = Date()
+        
+        // 1ヶ月の場合は3日ごとに集計
+        if selectedPeriod == .oneMonth {
+            return generateChartDataForOneMonth(calendar: calendar, now: now)
+        }
+        
+        // その他の期間は日次で集計
         let days = selectedPeriod.days
         var dataPoints: [ChartDataPoint] = []
         
@@ -257,6 +281,52 @@ struct StatsView: View {
             
             dataPoints.append(ChartDataPoint(
                 date: startOfDay,
+                timeSaved: timeSaved,
+                workTime: workTime
+            ))
+        }
+        
+        return dataPoints.reversed() // 古い順に
+    }
+    
+    // 1ヶ月グラフ用: 3日ごとに集計
+    private func generateChartDataForOneMonth(calendar: Calendar, now: Date) -> [ChartDataPoint] {
+        var dataPoints: [ChartDataPoint] = []
+        let days = 30
+        let aggregationDays = 3 // 3日ごとに集計
+        
+        // 30日を3日ずつのグループに分ける（10グループ）
+        for groupIndex in 0..<(days / aggregationDays) {
+            let startDayOffset = groupIndex * aggregationDays
+            let endDayOffset = min(startDayOffset + aggregationDays - 1, days - 1)
+            
+            // グループの開始日と終了日を計算
+            guard let groupStartDate = calendar.date(byAdding: .day, value: -endDayOffset, to: now),
+                  let groupEndDate = calendar.date(byAdding: .day, value: -startDayOffset, to: now) else {
+                continue
+            }
+            
+            let startOfPeriod = calendar.startOfDay(for: groupStartDate)
+            let endOfPeriod = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: groupEndDate))!
+            
+            // この期間のタスクを集計
+            let periodTasks = tasks.filter { task in
+                task.date >= startOfPeriod && task.date < endOfPeriod &&
+                task.isCompleted && task.actualDuration != nil
+            }
+            
+            let timeSaved = periodTasks.reduce(0) { total, task in
+                guard let actual = task.actualDuration else { return total }
+                return total + (task.effectiveDuration - actual)
+            }
+            
+            let workTime = periodTasks.reduce(0) { total, task in
+                total + (task.actualDuration ?? 0)
+            }
+            
+            // グループの代表日として開始日を使用
+            dataPoints.append(ChartDataPoint(
+                date: startOfPeriod,
                 timeSaved: timeSaved,
                 workTime: workTime
             ))
@@ -401,73 +471,12 @@ struct StatsView: View {
         let chartData = generateChartData()
         
         return VStack(alignment: .leading, spacing: 16) {
-            // コントロール
-            HStack {
-                Picker("Data Type", selection: $chartDataType) {
-                    ForEach(ChartDataType.allCases, id: \.self) { type in
-                        Text(type.displayName).tag(type)
-                    }
-                }
-                .pickerStyle(.menu)
-                
-                Spacer()
-                
-                Picker("Period", selection: $selectedPeriod) {
-                    ForEach(ChartPeriod.allCases, id: \.self) { period in
-                        Text(period.displayName).tag(period)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 150)
-            }
+            chartControls
             
-            // チャート本体
             if chartData.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "chart.bar")
-                        .font(.system(size: 40))
-                        .foregroundColor(AppTheme.textSecondary(for: colorScheme))
-                    Text(AppText.Stats.noDataAvailable)
-                        .font(.subheadline)
-                        .foregroundColor(AppTheme.textSecondary(for: colorScheme))
-                }
-                .frame(height: 300)
-                .frame(maxWidth: .infinity)
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(12)
+                chartEmptyView
             } else {
-                Chart {
-                    ForEach(chartData) { point in
-                        let value = chartDataType == .timeSaved ? point.timeSaved : point.workTime
-                        let color = chartDataType == .timeSaved
-                            ? (value >= 0 ? AppTheme.accent(for: colorScheme) : Color.red)
-                            : Color.blue
-                        
-                        BarMark(
-                            x: .value("Date", point.date, unit: .day),
-                            y: .value("Value", value)
-                        )
-                        .foregroundStyle(color)
-                        .cornerRadius(4)
-                    }
-                }
-                .chartXAxis {
-                    AxisMarks(values: .stride(by: .day, count: selectedPeriod == .sixMonths ? 30 : 1)) { value in
-                        AxisValueLabel(format: .dateTime.month().day())
-                        AxisGridLine()
-                    }
-                }
-                .chartYAxis {
-                    AxisMarks { value in
-                        AxisValueLabel {
-                            if let intValue = value.as(Int.self) {
-                                Text(formatMinutes(intValue))
-                            }
-                        }
-                        AxisGridLine()
-                    }
-                }
-                .frame(height: 300)
+                chartContentView(chartData: chartData)
             }
         }
         .padding()
@@ -476,6 +485,86 @@ struct StatsView: View {
         .shadow(color: .black.opacity(0.05), radius: 5)
         .padding(.horizontal)
         .padding(.bottom)
+    }
+    
+    private var chartControls: some View {
+        HStack {
+            Picker("Data Type", selection: $chartDataType) {
+                ForEach(ChartDataType.allCases, id: \.self) { type in
+                    Text(type.displayName).tag(type)
+                }
+            }
+            .pickerStyle(.menu)
+            
+            Spacer()
+            
+            Picker("Period", selection: $selectedPeriod) {
+                ForEach(ChartPeriod.allCases, id: \.self) { period in
+                    Text(period.displayName).tag(period)
+                }
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 150)
+        }
+    }
+    
+    private var chartEmptyView: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "chart.bar")
+                .font(.system(size: 40))
+                .foregroundColor(AppTheme.textSecondary(for: colorScheme))
+            Text(AppText.Stats.noDataAvailable)
+                .font(.subheadline)
+                .foregroundColor(AppTheme.textSecondary(for: colorScheme))
+        }
+        .frame(height: 300)
+        .frame(maxWidth: .infinity)
+        .background(Color.gray.opacity(0.1))
+        .cornerRadius(12)
+    }
+    
+    private func chartContentView(chartData: [ChartDataPoint]) -> some View {
+        let strideCount: Int
+        if selectedPeriod == .sixMonths {
+            strideCount = 30
+        } else if selectedPeriod == .oneMonth {
+            strideCount = 3 // 3日ごとに表示
+        } else {
+            strideCount = 1
+        }
+        
+        return Chart {
+            ForEach(chartData) { point in
+                let value = chartDataType == .timeSaved ? point.timeSaved : point.workTime
+                let color = chartDataType == .timeSaved
+                    ? (value >= 0 ? AppTheme.accent(for: colorScheme) : Color.red)
+                    : Color.blue
+                
+                BarMark(
+                    x: .value("Date", point.date, unit: .day),
+                    y: .value("Value", value)
+                )
+                .foregroundStyle(color)
+                .cornerRadius(4)
+            }
+        }
+        .chartXAxis {
+            AxisMarks(values: .stride(by: .day, count: strideCount)) { value in
+                AxisValueLabel(format: .dateTime.month().day())
+                AxisGridLine()
+            }
+        }
+        .chartYAxis {
+            AxisMarks { value in
+                AxisValueLabel {
+                    if let intValue = value.as(Int.self) {
+                        Text(formatMinutes(intValue))
+                    }
+                }
+                AxisGridLine()
+            }
+        }
+        .frame(height: 300)
     }
     
     // 分数を "2h 15m" 形式にするヘルパー

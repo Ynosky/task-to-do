@@ -1,6 +1,6 @@
 //
 //  AddTaskSheet.swift
-//  Task ToDo
+//  Agenda ToDo
 //
 //  Created by ryunosuke sato on 2025/12/21.
 //
@@ -164,7 +164,7 @@ struct AddTaskSheet: View {
         do {
             try modelContext.save()
         } catch {
-            print("Error saving task: \(error)")
+            // エラーは静かに処理（UIでの表示は不要）
         }
         
         onSave(newTask)

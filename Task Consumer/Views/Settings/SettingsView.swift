@@ -1,6 +1,6 @@
 //
 //  SettingsView.swift
-//  Task ToDo
+//  Agenda ToDo
 //
 //  Created by ryunosuke sato on 2025/12/21.
 //
@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import StoreKit
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
@@ -16,6 +17,8 @@ struct SettingsView: View {
     @Environment(\.colorScheme) private var colorScheme
     
     @State private var showingDeleteAlert = false
+    @State private var csvFileURL: URL?
+    @AppStorage("timerSound") private var timerSound: TimerSoundType = .chime
     
     // アプリバージョン情報
     private var appVersion: String {
@@ -71,7 +74,20 @@ struct SettingsView: View {
                         .pickerStyle(.segmented)
                     }
                     
-                    // 3. General
+                    // 3. Timer Notification
+                    Section(header: Text(AppText.Settings.timerNotification)) {
+                        Picker(AppText.Settings.sound, selection: $timerSound) {
+                            ForEach(TimerSoundType.allCases) { type in
+                                Text(type.displayName).tag(type)
+                            }
+                        }
+                        .onChange(of: timerSound) { oldValue, newValue in
+                            // プレビュー再生
+                            SoundManager.shared.play(newValue)
+                        }
+                    }
+                    
+                    // 4. General
                     Section(header: Text(AppText.Settings.general)) {
                         Button {
                             if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
@@ -89,7 +105,7 @@ struct SettingsView: View {
                         .foregroundColor(.primary)
                     }
                     
-                    // 4. Support
+                    // 5. Support
                     Section(header: Text(AppText.Settings.support)) {
                         Button {
                             requestReview()
@@ -110,19 +126,30 @@ struct SettingsView: View {
                         .foregroundColor(.primary)
                     }
                     
-                    // 5. Legal
+                    // 6. Legal
                     Section(header: Text(AppText.Settings.legal)) {
                         Link(destination: AppText.Links.privacyPolicyURL) {
                             Label(AppText.Settings.privacyPolicy, systemImage: "hand.raised")
                         }
-                        Link(destination: URL(string: "https://example.com/terms")!) {
-                            Label(AppText.Settings.termsOfService, systemImage: "doc.text")
-                        }
                     }
                     .foregroundColor(.primary)
                     
-                    // 6. Data Management
+                    // 7. Data Management
                     Section(header: Text(AppText.Settings.dataManagement)) {
+                        if let csvURL = csvFileURL {
+                            ShareLink(item: csvURL, preview: SharePreview("Tasks.csv")) {
+                                Label(AppText.Settings.exportToCSV, systemImage: "square.and.arrow.up")
+                            }
+                            .foregroundColor(.primary)
+                        } else {
+                            Button {
+                                generateCSV()
+                            } label: {
+                                Label(AppText.Settings.exportToCSV, systemImage: "square.and.arrow.up")
+                            }
+                            .foregroundColor(.primary)
+                        }
+                        
                         Button(role: .destructive) {
                             showingDeleteAlert = true
                         } label: {
@@ -130,7 +157,7 @@ struct SettingsView: View {
                         }
                     }
                     
-                    // 7. About
+                    // 8. About
                     Section {
                         HStack {
                             Text(AppText.Settings.version)
@@ -172,10 +199,76 @@ struct SettingsView: View {
             }
             
             try modelContext.save()
-            print("All data deleted successfully")
         } catch {
-            print("Failed to delete all data: \(error)")
+            // エラーは静かに処理（UIでの表示は不要）
         }
+    }
+    
+    // CSV生成ロジック
+    private func generateCSV() {
+        do {
+            let descriptor = FetchDescriptor<TaskItem>(
+                sortBy: [SortDescriptor(\.date, order: .forward), SortDescriptor(\.orderIndex, order: .forward)]
+            )
+            let allTasks = try modelContext.fetch(descriptor)
+            
+            var csvContent = "Title,Status,Parent Task,Target Start Time,Target End Time,Actual Start Time,Actual End Time\n"
+            
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy-MM-dd HH:mm"
+            
+            for task in allTasks {
+                // Title (CSVエスケープ処理)
+                let title = escapeCSVField(task.title)
+                
+                // Status
+                let status = task.isCompleted ? "Completed" : "Active"
+                
+                // Parent Task
+                let parentTitle = task.parent?.title ?? ""
+                let parentTitleEscaped = parentTitle.isEmpty ? "" : escapeCSVField(parentTitle)
+                
+                // Target Start Time
+                let targetStartTime = task.currentStartTime.map { dateFormatter.string(from: $0) } ?? ""
+                
+                // Target End Time
+                let targetEndTime = task.currentEndTime.map { dateFormatter.string(from: $0) } ?? ""
+                
+                // Actual Start Time
+                let actualStartTime = task.actualStartTime.map { dateFormatter.string(from: $0) } ?? ""
+                
+                // Actual End Time
+                let actualEndTime = task.actualEndTime.map { dateFormatter.string(from: $0) } ?? ""
+                
+                // CSV行を構築
+                csvContent += "\(title),\(status),\(parentTitleEscaped),\(targetStartTime),\(targetEndTime),\(actualStartTime),\(actualEndTime)\n"
+            }
+            
+            // 一時ファイルとして保存
+            let tempDir = FileManager.default.temporaryDirectory
+            let timestampFormatter = DateFormatter()
+            timestampFormatter.dateFormat = "yyyy-MM-dd_HH-mm"
+            let fileName = "Tasks_\(timestampFormatter.string(from: Date())).csv"
+            let fileURL = tempDir.appendingPathComponent(fileName)
+            
+            try csvContent.write(to: fileURL, atomically: true, encoding: .utf8)
+            csvFileURL = fileURL
+            
+        } catch {
+            // エラーは静かに処理
+            print("CSV generation error: \(error)")
+        }
+    }
+    
+    // CSVフィールドのエスケープ処理（カンマ、改行、ダブルクォートを処理）
+    private func escapeCSVField(_ field: String) -> String {
+        // カンマ、改行、ダブルクォートが含まれる場合はダブルクォートで囲む
+        if field.contains(",") || field.contains("\n") || field.contains("\"") {
+            // ダブルクォートをエスケープ（2つのダブルクォートに置き換え）
+            let escaped = field.replacingOccurrences(of: "\"", with: "\"\"")
+            return "\"\(escaped)\""
+        }
+        return field
     }
 }
 

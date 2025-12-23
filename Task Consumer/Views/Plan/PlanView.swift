@@ -1,6 +1,6 @@
 //
 //  PlanView.swift
-//  Task ToDo
+//  Agenda ToDo
 //
 //  Created by ryunosuke sato on 2025/12/21.
 //
@@ -198,7 +198,7 @@ struct PlanView: View {
             do {
                 try viewModel.loadParentTasks(for: selectedDate)
             } catch {
-                print("Error loading parent tasks: \(error)")
+                // エラーは静かに処理（UIでの表示は不要）
             }
         }
     }
@@ -219,6 +219,8 @@ struct PlanView: View {
                 if task.isCompleted {
                     task.isCompleted = false
                     try viewModel.modelContext?.save()
+                    // Hapticフィードバック: 未完了に戻す
+                    HapticManager.shared.impact(style: .light)
                 } else {
                     try viewModel.completeTask(task)
                 }

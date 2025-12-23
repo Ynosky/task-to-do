@@ -1,6 +1,6 @@
 //
 //  TaskViewModel.swift
-//  Task ToDo
+//  Agenda ToDo
 //
 //  Created by ryunosuke sato on 2025/12/21.
 //
@@ -331,6 +331,9 @@ final class TaskViewModel {
         // 変更を保存（親子関係を含む）
         try modelContext.save()
         
+        // Hapticフィードバック: タスク追加・更新
+        HapticManager.shared.impact(style: .medium)
+        
         // スケジュールを再計算
         try updateCurrentSchedule(for: date)
         
@@ -636,7 +639,7 @@ final class TaskViewModel {
             // 強制再描画
             refreshID = UUID()
         } catch {
-            print("Error moving subTask up: \(error)")
+            // エラーは静かに処理（UIでの表示は不要）
         }
     }
     
@@ -678,7 +681,7 @@ final class TaskViewModel {
             // 強制再描画
             refreshID = UUID()
         } catch {
-            print("Error moving subTask down: \(error)")
+            // エラーは静かに処理（UIでの表示は不要）
         }
     }
     
@@ -742,6 +745,9 @@ final class TaskViewModel {
         // 変更を保存
         try modelContext.save()
         
+        // Hapticフィードバック: タスク完了
+        HapticManager.shared.notification(type: .success)
+        
         // Viewの再計算をトリガー
         triggerRefresh()
     }
@@ -759,6 +765,9 @@ final class TaskViewModel {
             if allCompleted && !parentTask.isCompleted {
                 parentTask.isCompleted = true
                 try modelContext.save()
+                
+                // Hapticフィードバック: 親タスク完了
+                HapticManager.shared.notification(type: .success)
                 
                 // Viewの再計算をトリガー
                 triggerRefresh()
@@ -805,6 +814,9 @@ final class TaskViewModel {
         // 3. 変更を保存してスケジュール再計算
         try modelContext.save()
         try updateCurrentSchedule(for: date)
+        
+        // Hapticフィードバック: タスク削除
+        HapticManager.shared.notification(type: .warning)
         
         // Viewの再計算をトリガー
         triggerRefresh()
@@ -920,10 +932,14 @@ final class TaskViewModel {
         
         do {
             try modelContext.save()
+            
+            // Hapticフィードバック: タイマー開始
+            HapticManager.shared.impact(style: .medium)
+            
             // 強制再描画
             refreshID = UUID()
         } catch {
-            print("Error starting task: \(error)")
+            // エラーは静かに処理（UIでの表示は不要）
         }
     }
     
@@ -955,10 +971,13 @@ final class TaskViewModel {
             // スケジュールを再計算
             try? updateCurrentSchedule(for: task.date)
             
+            // Hapticフィードバック: タイマー完了・タスク完了
+            HapticManager.shared.notification(type: .success)
+            
             // 強制再描画
             refreshID = UUID()
         } catch {
-            print("Error finishing task: \(error)")
+            // エラーは静かに処理（UIでの表示は不要）
         }
     }
     

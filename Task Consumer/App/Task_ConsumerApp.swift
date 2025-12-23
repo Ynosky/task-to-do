@@ -1,6 +1,6 @@
 //
 //  TaskToDoApp.swift
-//  Task ToDo
+//  Agenda ToDo
 //
 //  Created by ryunosuke sato on 2025/12/21.
 //
@@ -10,6 +10,8 @@ import SwiftData
 
 @main
 struct TaskToDoApp: App {
+    @State private var localizationID = UUID()
+    
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             TaskItem.self,
@@ -26,6 +28,15 @@ struct TaskToDoApp: App {
     var body: some Scene {
         WindowGroup {
             MainTabView()
+                .id(localizationID)
+                .onReceive(NotificationCenter.default.publisher(for: NSLocale.currentLocaleDidChangeNotification)) { _ in
+                    // システムの言語変更通知を受け取ったら、IDを更新して強制リフレッシュ
+                    localizationID = UUID()
+                }
+                .onChange(of: LanguageManager.shared.language) { oldValue, newValue in
+                    // アプリ内の言語設定変更時も強制リフレッシュ
+                    localizationID = UUID()
+                }
         }
         .modelContainer(sharedModelContainer)
     }

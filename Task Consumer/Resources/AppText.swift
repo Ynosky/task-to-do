@@ -1,6 +1,6 @@
 //
 //  AppText.swift
-//  Task ToDo
+//  Agenda ToDo
 //
 //  Created by ryunosuke sato on 2025/12/21.
 //
@@ -169,13 +169,13 @@ struct AppText {
             LanguageManager.shared.language == .japanese ? "データがありません" : "No data available"
         }
         static var sevenDays: String {
-            LanguageManager.shared.language == .japanese ? "7日間" : "7 Days"
+            LanguageManager.shared.language == .japanese ? "7日間" : "7D"
         }
         static var oneMonth: String {
-            LanguageManager.shared.language == .japanese ? "1ヶ月" : "1 Month"
+            LanguageManager.shared.language == .japanese ? "1ヶ月" : "1M"
         }
         static var sixMonths: String {
-            LanguageManager.shared.language == .japanese ? "6ヶ月" : "6 Months"
+            LanguageManager.shared.language == .japanese ? "6ヶ月" : "6M"
         }
     }
     
@@ -243,6 +243,18 @@ struct AppText {
         }
         static var deleteAllDataMessage: String {
             LanguageManager.shared.language == .japanese ? "すべてのタスクを削除してもよろしいですか？この操作は取り消せません。" : "Are you sure you want to delete all tasks? This action cannot be undone."
+        }
+        static var exportToCSV: String {
+            LanguageManager.shared.language == .japanese ? "データをCSVで出力" : "Export Data as CSV"
+        }
+        static var timerNotification: String {
+            LanguageManager.shared.language == .japanese ? "タイマー通知" : "Timer Notification"
+        }
+        static var sound: String {
+            LanguageManager.shared.language == .japanese ? "音" : "Sound"
+        }
+        static var vibration: String {
+            LanguageManager.shared.language == .japanese ? "振動" : "Vibration"
         }
     }
     

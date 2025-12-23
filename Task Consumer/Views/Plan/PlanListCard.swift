@@ -1,6 +1,6 @@
 //
 //  PlanListCard.swift
-//  Task ToDo
+//  Agenda ToDo
 //
 //  Created by ryunosuke sato on 2025/12/21.
 //
@@ -63,7 +63,7 @@ struct PlanListCard: View {
                             try viewModel.updateCurrentSchedule(for: selectedDate)
                             viewModel.triggerRefresh()
                         } catch {
-                            print("Error updating schedule: \(error)")
+                            // エラーは静かに処理（UIでの表示は不要）
                         }
                     }
                 }
@@ -386,7 +386,7 @@ struct PlanParentTaskCard: View {
                         do {
                             try viewModel.updateCurrentSchedule(for: selectedDate)
                         } catch {
-                            print("Error updating schedule: \(error)")
+                            // エラーは静かに処理（UIでの表示は不要）
                         }
                     }
                 } label: {
@@ -402,7 +402,7 @@ struct PlanParentTaskCard: View {
                         do {
                             try viewModel.moveParentTaskUp(task, for: selectedDate)
                         } catch {
-                            print("Error moving task up: \(error)")
+                            // エラーは静かに処理（UIでの表示は不要）
                         }
                     }
                 } label: {
@@ -418,7 +418,7 @@ struct PlanParentTaskCard: View {
                         do {
                             try viewModel.moveParentTaskDown(task, for: selectedDate)
                         } catch {
-                            print("Error moving task down: \(error)")
+                            // エラーは静かに処理（UIでの表示は不要）
                         }
                     }
                 } label: {
@@ -432,7 +432,7 @@ struct PlanParentTaskCard: View {
                     do {
                         try viewModel.deleteTask(task, for: selectedDate)
                     } catch {
-                        print("Error deleting task: \(error)")
+                        // エラーは静かに処理（UIでの表示は不要）
                     }
                 }
             } label: {
@@ -451,7 +451,7 @@ struct PlanParentTaskCard: View {
                         do {
                             try viewModel.updateCurrentSchedule(for: selectedDate)
                         } catch {
-                            print("Error updating schedule: \(error)")
+                            // エラーは静かに処理（UIでの表示は不要）
                         }
                     }
                 }

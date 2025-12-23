@@ -1,6 +1,6 @@
 //
 //  DoView.swift
-//  Task ToDo
+//  Agenda ToDo
 //
 //  Created by ryunosuke sato on 2025/12/21.
 //
@@ -156,6 +156,8 @@ struct DoView: View {
                 if task.isCompleted {
                     task.isCompleted = false
                     try viewModel.modelContext?.save()
+                    // Hapticフィードバック: 未完了に戻す
+                    HapticManager.shared.impact(style: .light)
                 } else {
                     try viewModel.completeTask(task)
                 }
