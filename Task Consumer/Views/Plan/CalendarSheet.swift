@@ -17,14 +17,14 @@ struct CalendarSheet: View {
         NavigationStack {
             CalendarViewWrapper(selectedDate: $selectedDate, viewModel: viewModel)
                 .padding()
-                .navigationTitle("Select Date")
+                .navigationTitle(AppText.Calendar.selectDate)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Close") { dismiss() }
+                        Button(AppText.Calendar.close) { dismiss() }
                     }
                     ToolbarItem(placement: .primaryAction) {
-                        Button("Today") {
+                        Button(AppText.Calendar.today) {
                             selectedDate = Date()
                             dismiss()
                         }
@@ -46,7 +46,7 @@ struct CalendarViewWrapper: UIViewRepresentable {
     func makeUIView(context: Context) -> UICalendarView {
         let view = UICalendarView()
         view.calendar = Calendar.current
-        view.locale = Locale(identifier: "ja_JP")
+        view.locale = Locale(identifier: LanguageManager.shared.language == .japanese ? "ja_JP" : "en_US")
         view.fontDesign = .rounded
         
         // 日付選択のデリゲート

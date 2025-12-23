@@ -39,27 +39,27 @@ struct TaskEditView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("基本情報") {
-                    TextField("タイトル", text: $title)
+                Section(AppText.TaskEdit.basicInfo) {
+                    TextField(AppText.TaskEdit.title, text: $title)
                 }
                 
-                Section("所要時間") {
+                Section(AppText.TaskEdit.duration) {
                     // 子タスクがある場合は所要時間を編集できない
                     if let task = task, !(task.subTasks?.isEmpty ?? true) {
-                        Text("子タスクの合計時間: \(task.effectiveDuration)分")
+                        Text(AppText.TaskEdit.subtaskTotal(task.effectiveDuration))
                             .foregroundColor(.secondary)
                     } else {
-                        Picker("所要時間", selection: $duration) {
+                        Picker(AppText.TaskEdit.duration, selection: $duration) {
                             ForEach(durationOptions, id: \.self) { minutes in
-                                Text("\(minutes)分").tag(minutes)
+                                Text("\(minutes)\(AppText.TaskEdit.minutes)").tag(minutes)
                             }
                         }
                     }
                 }
                 
-                Section("親タスク") {
-                    Picker("親タスク", selection: $parentTask) {
-                        Text("なし").tag(nil as TaskItem?)
+                Section(AppText.TaskEdit.parentTask) {
+                    Picker(AppText.TaskEdit.parentTask, selection: $parentTask) {
+                        Text(AppText.TaskEdit.none).tag(nil as TaskItem?)
                         ForEach(availableParents) { parent in
                             Text(parent.title).tag(parent as TaskItem?)
                         }
@@ -68,29 +68,29 @@ struct TaskEditView: View {
                 
                 // 実績時間編集セクション（開始済みの場合のみ表示）
                 if hasActualStartTime {
-                    Section("実績時間 (修正)") {
-                        DatePicker("開始時間", selection: $actualStartTime)
+                    Section(AppText.TaskEdit.actualTime) {
+                        DatePicker(AppText.TaskEdit.startTime, selection: $actualStartTime)
                         
-                        Toggle("終了済み", isOn: $hasActualEndTime)
+                        Toggle(AppText.TaskEdit.isCompleted, isOn: $hasActualEndTime)
                         
                         if hasActualEndTime {
-                            DatePicker("終了時間", selection: $actualEndTime)
+                            DatePicker(AppText.TaskEdit.endTime, selection: $actualEndTime)
                         }
                     }
                 }
             }
-            .navigationTitle(isEditing ? "タスクを編集" : "新しいタスク")
+            .navigationTitle(isEditing ? AppText.TaskEdit.editTask : AppText.TaskEdit.newTask)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("キャンセル") {
+                    Button(AppText.Common.cancel) {
                         onDismiss()
                         dismiss()
                     }
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存") {
+                    Button(AppText.Common.save) {
                         saveTask()
                     }
                     .disabled(title.isEmpty)

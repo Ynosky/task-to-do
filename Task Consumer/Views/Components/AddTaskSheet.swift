@@ -30,11 +30,11 @@ struct AddTaskSheet: View {
             VStack(spacing: 20) {
                 // タイトル入力
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("タイトル")
+                    Text(AppText.AddTask.title)
                         .font(.headline)
                         .foregroundColor(.primary)
                     
-                    TextField("タスクのタイトルを入力", text: $title)
+                    TextField(AppText.AddTask.titlePlaceholder, text: $title)
                         .textFieldStyle(.roundedBorder)
                         .focused($isTitleFocused)
                 }
@@ -45,9 +45,9 @@ struct AddTaskSheet: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Toggle(isOn: $isStandaloneMode.animation(.spring(response: 0.3, dampingFraction: 0.7))) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(isStandaloneMode ? "単独のタスクとして作成" : "コンテナタスクとして作成")
+                            Text(isStandaloneMode ? AppText.AddTask.standaloneMode : AppText.AddTask.containerMode)
                                 .font(.body)
-                            Text(isStandaloneMode ? "詳細な時間を設定" : "後から子タスクを追加できます")
+                            Text(isStandaloneMode ? AppText.AddTask.standaloneDescription : AppText.AddTask.containerDescription)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -57,13 +57,13 @@ struct AddTaskSheet: View {
                     // 時間設定エリア（トグルがONの時のみ表示）
                     if isStandaloneMode {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("所要時間")
+                            Text(AppText.AddTask.duration)
                                 .font(.headline)
                                 .foregroundColor(.primary)
                             
-                            Picker("所要時間", selection: $selectedDuration) {
+                            Picker(AppText.AddTask.duration, selection: $selectedDuration) {
                                 ForEach(durationOptions, id: \.self) { minutes in
-                                    Text("\(minutes)分").tag(minutes)
+                                    Text("\(minutes)\(AppText.TaskEdit.minutes)").tag(minutes)
                                 }
                             }
                             .pickerStyle(.wheel)
@@ -76,12 +76,12 @@ struct AddTaskSheet: View {
                 
                 // 親タスク選択
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("親タスク（任意）")
+                    Text(AppText.AddTask.parentTask)
                         .font(.headline)
                         .foregroundColor(.primary)
                     
-                    Picker("親タスク", selection: $parentTask) {
-                        Text("なし").tag(nil as TaskItem?)
+                    Picker(AppText.AddTask.parentTask, selection: $parentTask) {
+                        Text(AppText.TaskEdit.none).tag(nil as TaskItem?)
                         ForEach(availableParents) { parent in
                             Text(parent.title).tag(parent as TaskItem?)
                         }
@@ -92,17 +92,17 @@ struct AddTaskSheet: View {
                 
                 Spacer()
             }
-            .navigationTitle("新しいタスク")
+            .navigationTitle(AppText.AddTask.newTask)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("キャンセル") {
+                    Button(AppText.Common.cancel) {
                         dismiss()
                     }
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存") {
+                    Button(AppText.Common.save) {
                         saveTask()
                     }
                     .disabled(title.isEmpty)

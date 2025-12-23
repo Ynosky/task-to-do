@@ -85,11 +85,16 @@ struct PlanDateButton: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var isHovered = false
     
-    // 曜日 (例: "Sat")
+    // 曜日 (例: "Sat" または "土")
     private var dayOfWeek: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "E"
-        formatter.locale = Locale(identifier: "ja_JP")
+        // 言語に応じてロケールを変更
+        if LanguageManager.shared.language == .japanese {
+            formatter.locale = Locale(identifier: "ja_JP")
+        } else {
+            formatter.locale = Locale(identifier: "en_US")
+        }
         return formatter.string(from: date)
     }
     

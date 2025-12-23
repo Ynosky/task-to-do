@@ -18,7 +18,7 @@ struct DoTopCard: View {
         if parentTasks.isEmpty {
             // タスクがない場合の表示
             VStack {
-                Text("タスクがありません")
+                Text(AppText.Do.noTasks)
                     .font(.headline)
                     .foregroundColor(AppTheme.textSecondary(for: colorScheme))
             }
@@ -127,7 +127,7 @@ struct DoTopCardContent: View {
                             .lineLimit(1)
                     } else {
                         // アクティブなタスクがない場合（全完了など）
-                        Text("Complete")
+                        Text(AppText.Do.complete)
                             .font(.system(size: 60, weight: .bold, design: .monospaced))
                             .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                             .multilineTextAlignment(.center)
@@ -137,7 +137,8 @@ struct DoTopCardContent: View {
                 
                 // 現在の子タスク名
                 let activeTaskTitle = viewModel.currentActiveTaskTitle
-                if !activeTaskTitle.isEmpty && activeTaskTitle != "No Task Selected" {
+                let noTaskSelectedText = LanguageManager.shared.language == .japanese ? "タスクが選択されていません" : "No Task Selected"
+                if !activeTaskTitle.isEmpty && activeTaskTitle != noTaskSelectedText {
                     Text(activeTaskTitle)
                         .font(.title2)
                         .bold()
@@ -159,7 +160,7 @@ struct DoTopCardContent: View {
                         }
                     }
                 }) {
-                    Label("Start", systemImage: "play.fill")
+                    Label(AppText.Do.start, systemImage: "play.fill")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()
@@ -177,7 +178,7 @@ struct DoTopCardContent: View {
                         }
                     }
                 }) {
-                    Label("Finish", systemImage: "checkmark")
+                    Label(AppText.Do.finish, systemImage: "checkmark")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()

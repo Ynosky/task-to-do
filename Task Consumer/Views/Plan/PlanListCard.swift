@@ -78,7 +78,7 @@ struct PlanListCard: View {
                 // ラベル
                 Image(systemName: "clock")
                     .foregroundColor(AppTheme.textSecondary(for: colorScheme))
-                Text("Global Start Time")
+                Text(AppText.Plan.globalStartTime)
                     .font(.subheadline)
                     .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                 
@@ -148,7 +148,7 @@ struct PlanListCard: View {
                         HStack {
                             Image(systemName: "plus.circle.fill")
                                 .foregroundColor(AppTheme.accent(for: colorScheme))
-                            Text("タスクを追加")
+                            Text(AppText.Plan.addTask)
                                 .foregroundColor(AppTheme.accent(for: colorScheme))
                         }
                         .frame(maxWidth: .infinity)
@@ -192,7 +192,7 @@ struct PlanParentTaskCard: View {
             formatter.timeStyle = .short
             return "\(formatter.string(from: startTime)) - \(formatter.string(from: endTime))"
         }
-        return "時間未設定"
+        return AppText.Plan.noTimeSet
     }
     
     private var durationText: String {
@@ -201,15 +201,19 @@ struct PlanParentTaskCard: View {
             // 子タスクがない場合
             if task.manualDuration > 0 {
                 // 単独タスク: manualDurationを表示
-                return "\(task.manualDuration)分"
+                return "\(task.manualDuration)\(AppText.TaskEdit.minutes)"
             } else {
                 // コンテナタスク（子タスクなし）: 0分と表示
-                return "子タスクなし（0分）"
+                return AppText.Plan.noSubTasks
             }
         } else {
             // コンテナタスク: 子タスクの合計時間を表示
             let totalDuration = task.effectiveDuration
-            return "タスク合計: \(totalDuration)分"
+            if LanguageManager.shared.language == .japanese {
+                return "タスク合計: \(totalDuration)分"
+            } else {
+                return "Task Total: \(totalDuration) min"
+            }
         }
     }
     
@@ -291,10 +295,10 @@ struct PlanParentTaskCard: View {
                     // 予定時間
                     if let startTime = task.currentStartTime,
                        let endTime = task.currentEndTime {
-                        Text("Plan: \(formatTime(startTime)) - \(formatTime(endTime))")
+                        Text("\(AppText.Plan.planLabel)\(formatTime(startTime)) - \(formatTime(endTime))")
                             .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                     } else {
-                        Text("Plan: 未設定")
+                        Text("\(AppText.Plan.planLabel)\(AppText.Plan.notSet)")
                             .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                     }
                     
@@ -305,11 +309,11 @@ struct PlanParentTaskCard: View {
                         
                         if let actEnd = task.actualEndTime {
                             // 完了時: 青か赤で表示
-                            Text("Act: \(formatTime(actStart)) - \(formatTime(actEnd))")
+                            Text("\(AppText.Plan.actLabel)\(formatTime(actStart)) - \(formatTime(actEnd))")
                                 .foregroundColor(viewModel.actualTimeColor(for: task))
                         } else {
                             // 進行中
-                            Text("Act: \(formatTime(actStart)) - ...")
+                            Text("\(AppText.Plan.actLabel)\(formatTime(actStart)) - ...")
                                 .foregroundColor(.orange)
                         }
                     }
@@ -366,7 +370,11 @@ struct PlanParentTaskCard: View {
             Button {
                 showingFixedTimePicker = true
             } label: {
-                Label("開始時間を固定", systemImage: "anchor")
+                HStack {
+                    Image(systemName: "clock")
+                        .foregroundColor(AppTheme.accent(for: colorScheme))
+                    Text(AppText.Plan.setStartTime)
+                }
             }
             
             // 固定を解除
@@ -382,7 +390,7 @@ struct PlanParentTaskCard: View {
                         }
                     }
                 } label: {
-                    Label("固定を解除", systemImage: "xmark.circle")
+                    Label(AppText.Plan.unsetStartTime, systemImage: "xmark.circle")
                 }
             }
             
@@ -398,7 +406,7 @@ struct PlanParentTaskCard: View {
                         }
                     }
                 } label: {
-                    Label("上へ移動", systemImage: "arrow.up")
+                    Label(AppText.Plan.moveUp, systemImage: "arrow.up")
                 }
             }
             
@@ -414,7 +422,7 @@ struct PlanParentTaskCard: View {
                         }
                     }
                 } label: {
-                    Label("下へ移動", systemImage: "arrow.down")
+                    Label(AppText.Plan.moveDown, systemImage: "arrow.down")
                 }
             }
             
@@ -428,7 +436,7 @@ struct PlanParentTaskCard: View {
                     }
                 }
             } label: {
-                Label("削除", systemImage: "trash")
+                Label(AppText.Common.delete, systemImage: "trash")
             }
         }
         .sheet(isPresented: $showingFixedTimePicker) {
@@ -516,7 +524,7 @@ struct PlanSubTaskRow: View {
                         .font(.caption)
                         .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                 } else {
-                    Text("未設定")
+                    Text(AppText.Plan.notSet)
                         .font(.caption)
                         .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                 }
@@ -551,7 +559,7 @@ struct PlanSubTaskRow: View {
                     try? viewModel.deleteTask(task, for: task.date)
                 }
             } label: {
-                Label("削除", systemImage: "trash")
+                Label(AppText.Common.delete, systemImage: "trash")
             }
         }
     }
@@ -570,12 +578,12 @@ struct GapTimeRow: View {
         
         if hours > 0 {
             if minutes > 0 {
-                return "\(hours)時間\(minutes)分"
+                return AppText.TimeFormat.hoursAndMinutes(hours, minutes)
             } else {
-                return "\(hours)時間"
+                return AppText.TimeFormat.hours(hours)
             }
         } else {
-            return "\(minutes)分"
+            return AppText.TimeFormat.minutes(minutes)
         }
     }
     
@@ -584,7 +592,7 @@ struct GapTimeRow: View {
             Image(systemName: "cup.and.saucer.fill")
                 .font(.caption)
                 .foregroundColor(AppTheme.textSecondary(for: colorScheme))
-            Text("休憩・スキマ時間")
+            Text(AppText.Plan.gapTime)
                 .font(.caption)
                 .foregroundColor(AppTheme.textSecondary(for: colorScheme))
             Spacer()
@@ -633,12 +641,12 @@ struct FixedTimePickerSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
-                Text("開始時間を固定")
+                Text(AppText.Plan.setStartTime)
                     .font(.headline)
                     .padding(.top)
                 
                 DatePicker(
-                    "開始時間",
+                    AppText.TaskEdit.startTime,
                     selection: $selectedTime,
                     displayedComponents: .hourAndMinute
                 )
@@ -648,17 +656,17 @@ struct FixedTimePickerSheet: View {
                 Spacer()
             }
             .padding()
-            .navigationTitle("固定開始時間")
+            .navigationTitle(AppText.Plan.fixedStartTime)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("キャンセル") {
+                    Button(AppText.Common.cancel) {
                         dismiss()
                     }
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存") {
+                    Button(AppText.Common.save) {
                         // 日付と時刻を結合
                         let calendar = Calendar.current
                         var components = calendar.dateComponents([.year, .month, .day], from: selectedDate)

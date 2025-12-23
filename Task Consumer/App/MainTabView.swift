@@ -31,31 +31,32 @@ struct MainTabView: View {
             // Plan (計画)
             PlanView(viewModel: viewModel)
                 .tabItem {
-                    Label("Plan", systemImage: "calendar")
+                    Label(AppText.Tab.plan, systemImage: "calendar")
                 }
                 .tag(0)
             
             // Do (実行)
             DoView(viewModel: viewModel)
                 .tabItem {
-                    Label("Do", systemImage: "checkmark.circle.fill")
+                    Label(AppText.Tab.doTab, systemImage: "checkmark.circle.fill")
                 }
                 .tag(1)
             
             // Stats (統計)
             StatsView()
                 .tabItem {
-                    Label("Stats", systemImage: "chart.bar")
+                    Label(AppText.Tab.stats, systemImage: "chart.bar")
                 }
                 .tag(2)
             
             // Settings (設定)
             SettingsView()
                 .tabItem {
-                    Label("Settings", systemImage: "gearshape")
+                    Label(AppText.Tab.settings, systemImage: "gearshape")
                 }
                 .tag(3)
         }
+        .id(LanguageManager.shared.language)
         .tint(colorScheme == .dark ? AppTheme.Deep.accent : AppTheme.Paper.accent)
         .preferredColorScheme(colorScheme)
         .background {
@@ -77,20 +78,35 @@ struct StatsView: View {
     @State private var selectedPeriod: ChartPeriod = .sevenDays
     
     enum ChartDataType: String, CaseIterable {
-        case timeSaved = "Time Saved"
-        case workTime = "Work Time"
+        case timeSaved
+        case workTime
+        
+        var displayName: String {
+            switch self {
+            case .timeSaved: return AppText.Stats.timeSaved
+            case .workTime: return AppText.Stats.workTime
+            }
+        }
     }
     
     enum ChartPeriod: String, CaseIterable {
-        case sevenDays = "7D"
-        case oneMonth = "1M"
-        case sixMonths = "6M"
+        case sevenDays
+        case oneMonth
+        case sixMonths
         
         var days: Int {
             switch self {
             case .sevenDays: return 7
             case .oneMonth: return 30
             case .sixMonths: return 180
+            }
+        }
+        
+        var displayName: String {
+            switch self {
+            case .sevenDays: return AppText.Stats.sevenDays
+            case .oneMonth: return AppText.Stats.oneMonth
+            case .sixMonths: return AppText.Stats.sixMonths
             }
         }
     }
@@ -194,11 +210,11 @@ struct StatsView: View {
     private var accuracyStatus: String {
         let accuracy = currentAccuracy
         if accuracy < 0.8 {
-            return "Too Loose"
+            return AppText.Stats.tooLoose
         } else if accuracy <= 1.2 {
-            return "Perfect Zone"
+            return AppText.Stats.perfectZone
         } else {
-            return "Overtime"
+            return AppText.Stats.overtime
         }
     }
     
@@ -256,14 +272,14 @@ struct StatsView: View {
                     // 1. サマリーカード (2カラム)
                     HStack(spacing: 16) {
                         SummaryCard(
-                            title: "Time Saved",
+                            title: AppText.Stats.timeSaved,
                             value: formatDuration(calculateTotalTimeSaved(days: 30)),
                             icon: "hourglass.bottomhalf.filled",
                             color: AppTheme.accent(for: colorScheme)
                         )
                         
                         SummaryCard(
-                            title: "Tasks Done",
+                            title: AppText.Stats.tasksDone,
                             value: "\(calculateCompletedTasks(days: 30))",
                             icon: "checkmark.circle.fill",
                             color: .blue
@@ -292,10 +308,10 @@ struct StatsView: View {
         return VStack(alignment: .leading, spacing: 12) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Planning Accuracy (3-Day Avg)")
+                    Text(AppText.Stats.planningAccuracy)
                         .font(.headline)
                     
-                    Text("Target: 80% - 120%")
+                    Text(AppText.Stats.target)
                         .font(.caption)
                         .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                 }
@@ -321,7 +337,7 @@ struct StatsView: View {
                     Image(systemName: "chart.line.downtrend.xyaxis")
                         .font(.system(size: 40))
                         .foregroundColor(AppTheme.textSecondary(for: colorScheme))
-                    Text("No sufficient data yet")
+                    Text(AppText.Stats.noData)
                         .font(.subheadline)
                         .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                 }
@@ -389,7 +405,7 @@ struct StatsView: View {
             HStack {
                 Picker("Data Type", selection: $chartDataType) {
                     ForEach(ChartDataType.allCases, id: \.self) { type in
-                        Text(type.rawValue).tag(type)
+                        Text(type.displayName).tag(type)
                     }
                 }
                 .pickerStyle(.menu)
@@ -398,7 +414,7 @@ struct StatsView: View {
                 
                 Picker("Period", selection: $selectedPeriod) {
                     ForEach(ChartPeriod.allCases, id: \.self) { period in
-                        Text(period.rawValue).tag(period)
+                        Text(period.displayName).tag(period)
                     }
                 }
                 .pickerStyle(.segmented)
@@ -411,7 +427,7 @@ struct StatsView: View {
                     Image(systemName: "chart.bar")
                         .font(.system(size: 40))
                         .foregroundColor(AppTheme.textSecondary(for: colorScheme))
-                    Text("No data available")
+                    Text(AppText.Stats.noDataAvailable)
                         .font(.subheadline)
                         .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                 }

@@ -155,8 +155,8 @@ struct PlanView: View {
                 }
             )
         }
-        .alert("エラー", isPresented: $showingError) {
-            Button("OK", role: .cancel) { }
+        .alert(AppText.Common.error, isPresented: $showingError) {
+            Button(AppText.Common.ok, role: .cancel) { }
         } message: {
             if let errorMessage = errorMessage {
                 Text(errorMessage)
@@ -183,8 +183,13 @@ struct PlanView: View {
     // 選択中の日付をフォーマット（例: "2025年12月21日"）
     private var formattedFullDate: String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy年M月d日"
-        formatter.locale = Locale(identifier: "ja_JP")
+        if LanguageManager.shared.language == .japanese {
+            formatter.dateFormat = "yyyy年M月d日"
+            formatter.locale = Locale(identifier: "ja_JP")
+        } else {
+            formatter.dateStyle = .long
+            formatter.locale = Locale(identifier: "en_US")
+        }
         return formatter.string(from: selectedDate)
     }
     

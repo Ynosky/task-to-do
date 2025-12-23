@@ -28,7 +28,7 @@ struct DoBottomCard: View {
                             Image(systemName: "list.bullet")
                                 .font(.system(size: 40))
                                 .foregroundColor(AppTheme.textSecondary(for: colorScheme))
-                            Text("子タスクがありません")
+                            Text(AppText.Do.noSubTasks)
                                 .font(.subheadline)
                                 .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                         }
@@ -137,7 +137,7 @@ struct DoSubTaskRow: View {
                         .font(.caption)
                         .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                 } else {
-                    Text("未設定")
+                    Text(AppText.Plan.notSet)
                         .font(.caption)
                         .foregroundColor(AppTheme.textSecondary(for: colorScheme))
                 }
@@ -176,7 +176,7 @@ struct DoSubTaskRow: View {
                         viewModel.moveSubTaskUp(task)
                     }
                 } label: {
-                    Label("上へ移動", systemImage: "arrow.up")
+                    Label(AppText.Do.moveUp, systemImage: "arrow.up")
                 }
             }
             
@@ -187,7 +187,7 @@ struct DoSubTaskRow: View {
                         viewModel.moveSubTaskDown(task)
                     }
                 } label: {
-                    Label("下へ移動", systemImage: "arrow.down")
+                    Label(AppText.Do.moveDown, systemImage: "arrow.down")
                 }
             }
             
@@ -197,7 +197,7 @@ struct DoSubTaskRow: View {
                     try? viewModel.deleteTask(task, for: selectedDate)
                 }
             } label: {
-                Label("削除", systemImage: "trash")
+                Label(AppText.Common.delete, systemImage: "trash")
             }
         }
     }
@@ -214,7 +214,7 @@ struct DoAddTaskRow: View {
                     .foregroundColor(AppTheme.accent(for: colorScheme))
                     .font(.title3)
                 
-                Text("Add Subtask")
+                Text(AppText.Do.addSubtask)
                     .font(.body)
                     .foregroundColor(AppTheme.textPrimary(for: colorScheme))
                 

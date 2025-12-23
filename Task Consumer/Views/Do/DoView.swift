@@ -114,8 +114,8 @@ struct DoView: View {
                 }
             )
         }
-        .alert("エラー", isPresented: $showingError) {
-            Button("OK", role: .cancel) { }
+        .alert(AppText.Common.error, isPresented: $showingError) {
+            Button(AppText.Common.ok, role: .cancel) { }
         } message: {
             if let errorMessage = errorMessage {
                 Text(errorMessage)

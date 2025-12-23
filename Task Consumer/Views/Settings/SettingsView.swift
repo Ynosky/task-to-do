@@ -26,103 +26,137 @@ struct SettingsView: View {
     }
     
     var body: some View {
-        NavigationStack {
-            List {
-                // 1. Appearance
-                Section(header: Text("Appearance")) {
-                    Picker("Theme", selection: $userInterfaceStyle) {
-                        Text("Light").tag("light")
-                        Text("Dark").tag("dark")
-                        Text("System").tag("system")
-                    }
-                    .pickerStyle(.segmented)
-                }
-                
-                // 2. General
-                Section(header: Text("General")) {
-                    Button {
-                        if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
-                            UIApplication.shared.open(url)
+        ZStack {
+            // Deep/Paperテーマの背景
+            if colorScheme == .dark {
+                // Deep: 放射状グラデーション
+                RadialGradient(
+                    colors: [
+                        AppTheme.Deep.background,
+                        AppTheme.Deep.backgroundSecondary,
+                        AppTheme.Deep.background
+                    ],
+                    center: .center,
+                    startRadius: 0,
+                    endRadius: 800
+                )
+                .ignoresSafeArea()
+            } else {
+                // Paper: セピアクリーム背景
+                AppTheme.Paper.background
+                    .ignoresSafeArea()
+            }
+            
+            NavigationStack {
+                List {
+                    // 1. Language
+                    Section(header: Text(AppText.Settings.language)) {
+                        Picker(selection: Binding(
+                            get: { LanguageManager.shared.language },
+                            set: { LanguageManager.shared.language = $0 }
+                        ), label: Text(AppText.Settings.language)) {
+                            Text(AppText.Settings.japanese).tag(AppLanguage.japanese)
+                            Text(AppText.Settings.english).tag(AppLanguage.english)
                         }
-                    } label: {
-                        HStack {
-                            Label("Notifications", systemImage: "bell.badge")
-                            Spacer()
-                            Image(systemName: "arrow.up.right")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
+                        .pickerStyle(.segmented)
                     }
-                    .foregroundColor(.primary)
-                }
-                
-                // 3. Support
-                Section(header: Text("Support")) {
-                    Button {
-                        requestReview()
-                    } label: {
-                        Label("Rate this App", systemImage: "star")
+                    
+                    // 2. Appearance
+                    Section(header: Text(AppText.Settings.appearance)) {
+                        Picker("Theme", selection: $userInterfaceStyle) {
+                            Text(AppText.Settings.light).tag("light")
+                            Text(AppText.Settings.dark).tag("dark")
+                            Text(AppText.Settings.system).tag("system")
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                    
+                    // 3. General
+                    Section(header: Text(AppText.Settings.general)) {
+                        Button {
+                            if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
+                        } label: {
+                            HStack {
+                                Label(AppText.Settings.notifications, systemImage: "bell.badge")
+                                Spacer()
+                                Image(systemName: "arrow.up.right")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .foregroundColor(.primary)
+                    }
+                    
+                    // 4. Support
+                    Section(header: Text(AppText.Settings.support)) {
+                        Button {
+                            requestReview()
+                        } label: {
+                            Label(AppText.Settings.rateApp, systemImage: "star")
+                        }
+                        .foregroundColor(.primary)
+                        
+                        Link(destination: AppText.Links.supportFormURL) {
+                            HStack {
+                                Label(AppText.Settings.contactUs, systemImage: "envelope")
+                                Spacer()
+                                Image(systemName: "arrow.up.right")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .foregroundColor(.primary)
+                    }
+                    
+                    // 5. Legal
+                    Section(header: Text(AppText.Settings.legal)) {
+                        Link(destination: AppText.Links.privacyPolicyURL) {
+                            Label(AppText.Settings.privacyPolicy, systemImage: "hand.raised")
+                        }
+                        Link(destination: URL(string: "https://example.com/terms")!) {
+                            Label(AppText.Settings.termsOfService, systemImage: "doc.text")
+                        }
                     }
                     .foregroundColor(.primary)
                     
-                    Link(destination: URL(string: "https://twitter.com/example")!) {
-                        HStack {
-                            Label("Contact Us", systemImage: "envelope")
-                            Spacer()
-                            Image(systemName: "arrow.up.right")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                    // 6. Data Management
+                    Section(header: Text(AppText.Settings.dataManagement)) {
+                        Button(role: .destructive) {
+                            showingDeleteAlert = true
+                        } label: {
+                            Label(AppText.Settings.deleteAllData, systemImage: "trash")
                         }
                     }
-                    .foregroundColor(.primary)
-                }
-                
-                // 4. Legal
-                Section(header: Text("Legal")) {
-                    Link(destination: URL(string: "https://example.com/privacy")!) {
-                        Label("Privacy Policy", systemImage: "hand.raised")
-                    }
-                    Link(destination: URL(string: "https://example.com/terms")!) {
-                        Label("Terms of Service", systemImage: "doc.text")
-                    }
-                }
-                .foregroundColor(.primary)
-                
-                // 5. Data Management
-                Section(header: Text("Data Management")) {
-                    Button(role: .destructive) {
-                        showingDeleteAlert = true
-                    } label: {
-                        Label("Delete All Data", systemImage: "trash")
+                    
+                    // 7. About
+                    Section {
+                        HStack {
+                            Text(AppText.Settings.version)
+                            Spacer()
+                            Text("\(appVersion) (\(buildNumber))")
+                                .foregroundColor(.secondary)
+                        }
+                    } header: {
+                        Text(AppText.Settings.about)
+                    } footer: {
+                        Text("© 2025 \(AppText.App.name)")
+                            .font(.caption)
+                            .padding(.top, 8)
                     }
                 }
-                
-                // 6. About
-                Section {
-                    HStack {
-                        Text("Version")
-                        Spacer()
-                        Text("\(appVersion) (\(buildNumber))")
-                            .foregroundColor(.secondary)
+                .navigationTitle(AppText.Settings.title)
+                // リストの背景を透明にして、背面のテーマ背景色が見えるようにする
+                .scrollContentBackground(.hidden)
+                .alert(AppText.Settings.deleteAllData, isPresented: $showingDeleteAlert) {
+                    Button(AppText.Common.cancel, role: .cancel) { }
+                    Button(AppText.Common.delete, role: .destructive) {
+                        deleteAllData()
                     }
-                } header: {
-                    Text("About")
-                } footer: {
-                    Text("© 2025 Task ToDo")
-                        .font(.caption)
-                        .padding(.top, 8)
+                } message: {
+                    Text(AppText.Settings.deleteAllDataMessage)
                 }
-            }
-            .navigationTitle("Settings")
-            // Dark Mode時の透過設定（Deep Theme対応）
-            .scrollContentBackground(.hidden)
-            .alert("Delete All Data", isPresented: $showingDeleteAlert) {
-                Button("Cancel", role: .cancel) { }
-                Button("Delete", role: .destructive) {
-                    deleteAllData()
-                }
-            } message: {
-                Text("Are you sure you want to delete all tasks? This action cannot be undone.")
             }
         }
     }

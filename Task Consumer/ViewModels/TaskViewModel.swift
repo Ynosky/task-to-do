@@ -32,7 +32,9 @@ final class TaskViewModel {
     
     // 現在アクティブなタスクのタイトルを取得
     var currentActiveTaskTitle: String {
-        guard let parent = selectedParentTask else { return "No Task Selected" }
+        guard let parent = selectedParentTask else { 
+            return LanguageManager.shared.language == .japanese ? "タスクが選択されていません" : "No Task Selected"
+        }
         
         // 未完了の最初の子タスクを探す（orderIndex順）
         if let subTasks = parent.subTasks, !subTasks.isEmpty {
