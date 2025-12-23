@@ -17,6 +17,7 @@ struct PlanListCard: View {
     let onTaskToggle: (TaskItem) -> Void
     let onSubTaskToggle: (TaskItem) -> Void
     let onAddTask: () -> Void
+    let onTaskEdit: ((TaskItem) -> Void)?
     @Environment(\.colorScheme) private var colorScheme
     
     init(
@@ -27,7 +28,8 @@ struct PlanListCard: View {
         onStartTimeChanged: @escaping (Date) -> Void,
         onTaskToggle: @escaping (TaskItem) -> Void,
         onSubTaskToggle: @escaping (TaskItem) -> Void,
-        onAddTask: @escaping () -> Void
+        onAddTask: @escaping () -> Void,
+        onTaskEdit: ((TaskItem) -> Void)? = nil
     ) {
         self.selectedDate = selectedDate
         self.dayStartTime = dayStartTime
@@ -37,6 +39,7 @@ struct PlanListCard: View {
         self.onTaskToggle = onTaskToggle
         self.onSubTaskToggle = onSubTaskToggle
         self.onAddTask = onAddTask
+        self.onTaskEdit = onTaskEdit
     }
     
     // カスタムバインディング: ViewModelの保存ロジックに直接接続
@@ -139,7 +142,10 @@ struct PlanListCard: View {
                             },
                             onSubTaskToggle: { subTask in
                                 onSubTaskToggle(subTask)
-                            }
+                            },
+                            onTaskEdit: onTaskEdit != nil ? {
+                                onTaskEdit!(task)
+                            } : nil
                         )
                     }
                     
@@ -181,6 +187,7 @@ struct PlanParentTaskCard: View {
     let selectedDate: Date
     let onTaskToggle: () -> Void
     let onSubTaskToggle: (TaskItem) -> Void
+    let onTaskEdit: (() -> Void)?
     
     @State private var showingFixedTimePicker = false
     @Environment(\.colorScheme) private var colorScheme
@@ -374,6 +381,15 @@ struct PlanParentTaskCard: View {
                     Image(systemName: "clock")
                         .foregroundColor(AppTheme.accent(for: colorScheme))
                     Text(AppText.Plan.setStartTime)
+                }
+            }
+            
+            // 編集
+            if let onTaskEdit = onTaskEdit {
+                Button {
+                    onTaskEdit()
+                } label: {
+                    Label(AppText.Common.edit, systemImage: "pencil")
                 }
             }
             

@@ -120,6 +120,10 @@ struct PlanView: View {
                         },
                         onAddTask: {
                             showingAddTask = true
+                        },
+                        onTaskEdit: { task in
+                            editingTask = task
+                            showingTaskEdit = true
                         }
                     )
                     .padding(.horizontal, 16)

@@ -42,6 +42,9 @@ struct AppText {
         static var delete: String {
             LanguageManager.shared.language == .japanese ? "削除" : "Delete"
         }
+        static var edit: String {
+            LanguageManager.shared.language == .japanese ? "編集" : "Edit"
+        }
         static var done: String {
             LanguageManager.shared.language == .japanese ? "完了" : "Done"
         }
