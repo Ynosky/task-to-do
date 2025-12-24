@@ -84,6 +84,15 @@ struct MainTabView: View {
     }
 }
 
+// MARK: - Scroll Offset Preference Key
+
+struct ScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 // MARK: - Stats View
 
 struct StatsView: View {
@@ -93,6 +102,14 @@ struct StatsView: View {
     // 表示モード管理
     @State private var chartDataType: ChartDataType = .timeSaved
     @State private var selectedPeriod: ChartPeriod = .sevenDays
+    
+    // サプライズ・メモリー
+    @State private var memoryTasks: [TaskItem] = []
+    @State private var isRefreshing = false
+    @State private var pullOffset: CGFloat = 0
+    @State private var hasTriggeredThreshold = false // 閾値を超えたことを記録
+    
+    private let threshold: CGFloat = 60 // 反応する距離
     
     enum ChartDataType: String, CaseIterable {
         case timeSaved
@@ -158,6 +175,50 @@ struct StatsView: View {
         }
         return tasks.filter { task in
             task.date >= startDate && task.isCompleted && task.actualDuration != nil
+        }
+    }
+    
+    // 全ての完了済みタスクを取得
+    func getAllCompletedTasks() -> [TaskItem] {
+        return tasks.filter { task in
+            task.isCompleted
+        }
+    }
+    
+    // ランダムに過去の完了タスクを1つ選出
+    func addRandomMemoryTask() {
+        let allCompleted = getAllCompletedTasks()
+        let alreadyShownIds = Set(memoryTasks.map { $0.id })
+        let availableTasks = allCompleted.filter { !alreadyShownIds.contains($0.id) }
+        
+        guard let randomTask = availableTasks.randomElement() else {
+            // 全て表示済みの場合は、最初からリセットして再選択
+            if !allCompleted.isEmpty {
+                let resetTask = allCompleted.randomElement()!
+                memoryTasks = [resetTask]
+            }
+            return
+        }
+        
+        // リストの先頭に追加
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+            memoryTasks.insert(randomTask, at: 0)
+        }
+    }
+    
+    // リフレッシュをトリガー
+    func triggerRefresh() {
+        guard !isRefreshing else { return }
+        
+        // 触覚フィードバック
+        HapticManager.shared.impact(style: .medium)
+        
+        isRefreshing = true
+        
+        // 少し待ってからタスク追加
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            addRandomMemoryTask()
+            isRefreshing = false
         }
     }
     
@@ -338,35 +399,107 @@ struct StatsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 20) {
-                    // 1. サマリーカード (2カラム)
-                    HStack(spacing: 16) {
-                        SummaryCard(
-                            title: AppText.Stats.timeSaved,
-                            value: formatDuration(calculateTotalTimeSaved(days: 30)),
-                            icon: "hourglass.bottomhalf.filled",
-                            color: AppTheme.accent(for: colorScheme)
-                        )
-                        
-                        SummaryCard(
-                            title: AppText.Stats.tasksDone,
-                            value: "\(calculateCompletedTasks(days: 30))",
-                            icon: "checkmark.circle.fill",
-                            color: .blue
-                        )
+                VStack(spacing: 0) {
+                    // A. 位置監視用の透明ビュー (アンカー) - 最上部に配置
+                    GeometryReader { geo in
+                        Color.clear
+                            .preference(key: ScrollOffsetPreferenceKey.self, value: geo.frame(in: .named("pullToRefresh")).minY)
                     }
-                    .padding(.horizontal)
-                    .padding(.top, 10)
+                    .frame(height: 1)
                     
-                    // 2. Planning Accuracy Graph (計画精度グラフ)
-                    accuracyTrendGraph
-                    
-                    // 3. チャートセクション
-                    chartSection
+                    VStack(spacing: 20) {
+                        // B. プレゼントアイコン (引っ張っている時のみ出現)
+                        if pullOffset > 0 || isRefreshing {
+                            ZStack {
+                                Image(systemName: "gift.fill")
+                                    .font(.system(size: 32))
+                                    .foregroundStyle(.pink)
+                                    .rotationEffect(.degrees(isRefreshing ? 360 : Double(pullOffset) * 2))
+                                    .animation(
+                                        isRefreshing
+                                            ? .linear(duration: 1).repeatForever(autoreverses: false)
+                                            : .default,
+                                        value: isRefreshing
+                                    )
+                                    
+                                if isRefreshing {
+                                    Text("Finding memory...")
+                                        .font(.caption2)
+                                        .offset(y: 24)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .frame(height: 50)
+                            .opacity(min(1.0, pullOffset / threshold))
+                        }
+                        
+                        // C. サプライズタスクリスト
+                        if !memoryTasks.isEmpty {
+                            ForEach(memoryTasks) { task in
+                                MemoryTaskCard(task: task, colorScheme: colorScheme)
+                                    .transition(.move(edge: .top).combined(with: .opacity))
+                            }
+                            .padding(.horizontal)
+                            .padding(.top, 10)
+                        }
+                        
+                        // D. 既存の統計コンテンツ
+                        // 1. サマリーカード (2カラム)
+                        HStack(spacing: 16) {
+                            SummaryCard(
+                                title: AppText.Stats.timeSaved,
+                                value: formatDuration(calculateTotalTimeSaved(days: 30)),
+                                icon: "hourglass.bottomhalf.filled",
+                                color: AppTheme.accent(for: colorScheme)
+                            )
+                            
+                            SummaryCard(
+                                title: AppText.Stats.tasksDone,
+                                value: "\(calculateCompletedTasks(days: 30))",
+                                icon: "checkmark.circle.fill",
+                                color: .blue
+                            )
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 10)
+                        
+                        // 2. Planning Accuracy Graph (計画精度グラフ)
+                        accuracyTrendGraph
+                        
+                        // 3. チャートセクション
+                        chartSection
+                    }
+                }
+            }
+            .coordinateSpace(name: "pullToRefresh") // 座標空間の定義（ScrollViewに対して）
+            .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
+                // スクロール位置の変化を検知
+                // minYが正の値 = 下に引っ張っている（GeometryReaderがScrollViewの上部より下にある）
+                let previousOffset = self.pullOffset
+                let offset = max(0, value)
+                self.pullOffset = offset
+                
+                // 閾値を超えたかチェック
+                if !isRefreshing && !hasTriggeredThreshold && offset > threshold {
+                    hasTriggeredThreshold = true
+                }
+                
+                // 閾値を超えた後、小さな値に戻った時（指を離した時）にトリガー
+                // 完全に0ではなく、閾値の半分以下に戻った時をトリガーとする
+                if !isRefreshing && hasTriggeredThreshold && offset < threshold / 2 && previousOffset >= threshold / 2 {
+                    triggerRefresh()
+                    hasTriggeredThreshold = false
                 }
             }
             .background(Color.clear) // 背景を透明にして深海パターンが見えるように
             .toolbar(.hidden, for: .navigationBar)
+            .onDisappear {
+                // タブを離れた時にメモリータスクをリセット
+                memoryTasks.removeAll()
+                pullOffset = 0
+                isRefreshing = false
+                hasTriggeredThreshold = false
+            }
         }
     }
     
@@ -596,6 +729,48 @@ struct StatsView: View {
         } else {
             return "\(m)m"
         }
+    }
+}
+
+// MARK: - Memory Task Card
+
+struct MemoryTaskCard: View {
+    let task: TaskItem
+    let colorScheme: ColorScheme
+    
+    private var completedDate: Date {
+        // actualEndTimeがあればそれを使用、なければdateを使用
+        task.actualEndTime ?? task.date
+    }
+    
+    private var dateFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy/MM/dd"
+        return formatter
+    }
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "gift.fill")
+                .font(.title3)
+                .foregroundStyle(.pink)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(dateFormatter.string(from: completedDate))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(task.title)
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .foregroundColor(AppTheme.textPrimary(for: colorScheme))
+            }
+            
+            Spacer()
+        }
+        .padding()
+        .background(AppTheme.cardBackground(for: colorScheme))
+        .cornerRadius(12)
+        .shadow(color: colorScheme == .dark ? Color.black.opacity(0.3) : Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
     }
 }
 

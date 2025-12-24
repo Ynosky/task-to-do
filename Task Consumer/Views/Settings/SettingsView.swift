@@ -18,6 +18,7 @@ struct SettingsView: View {
     
     @State private var showingDeleteAlert = false
     @State private var csvFileURL: URL?
+    @State private var showSafariSheet = false
     @AppStorage("timerSound") private var timerSound: TimerSoundType = .chime
     
     // アプリバージョン情報
@@ -105,23 +106,54 @@ struct SettingsView: View {
                         .foregroundColor(.primary)
                     }
                     
-                    // 5. Support
-                    Section(header: Text(AppText.Settings.support)) {
+                    // 5. Support & Feedback
+                    Section(header: Text(AppText.SettingsSupport.supportAndFeedback)) {
+                        // ボトルメール (詳細フィードバック)
+                        Button {
+                            showSafariSheet = true
+                        } label: {
+                            HStack {
+                                Label {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(AppText.SettingsSupport.sendBottleMail)
+                                        Text(AppText.SettingsSupport.bottleMailCaption)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                } icon: {
+                                    Image(systemName: "paperplane")
+                                }
+                            }
+                        }
+                        .foregroundColor(.primary)
+                        
+                        // お問い合わせ
+                        Menu {
+                            Button {
+                                // mailto処理
+                                if let url = URL(string: "mailto:\(AppText.Links.supportEmail)") {
+                                    UIApplication.shared.open(url)
+                                }
+                            } label: {
+                                Label(AppText.SettingsSupport.openMailApp, systemImage: "envelope")
+                            }
+                            
+                            Button {
+                                // copy処理
+                                UIPasteboard.general.string = AppText.Links.supportEmail
+                            } label: {
+                                Label(AppText.SettingsSupport.copyEmailAddress, systemImage: "doc.on.doc")
+                            }
+                        } label: {
+                            Label(AppText.SettingsSupport.contactUs, systemImage: "envelope")
+                        }
+                        .foregroundColor(.primary)
+                        
+                        // アプリを評価する
                         Button {
                             requestReview()
                         } label: {
                             Label(AppText.Settings.rateApp, systemImage: "star")
-                        }
-                        .foregroundColor(.primary)
-                        
-                        Link(destination: AppText.Links.supportFormURL) {
-                            HStack {
-                                Label(AppText.Settings.contactUs, systemImage: "envelope")
-                                Spacer()
-                                Image(systemName: "arrow.up.right")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
                         }
                         .foregroundColor(.primary)
                     }
@@ -183,6 +215,10 @@ struct SettingsView: View {
                     }
                 } message: {
                     Text(AppText.Settings.deleteAllDataMessage)
+                }
+                .sheet(isPresented: $showSafariSheet) {
+                    SafariView(url: AppText.Links.bottleMailURL)
+                        .ignoresSafeArea()
                 }
             }
         }

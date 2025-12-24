@@ -936,6 +936,18 @@ final class TaskViewModel {
             // Hapticフィードバック: タイマー開始
             HapticManager.shared.impact(style: .medium)
             
+            // バックグラウンド通知をスケジュール
+            if let endTime = task.currentEndTime {
+                let remainingTime = endTime.timeIntervalSince(Date())
+                if remainingTime > 0 {
+                    NotificationManager.shared.scheduleNotification(
+                        seconds: remainingTime,
+                        title: AppText.Notification.timerEndTitle,
+                        body: AppText.Notification.timerEndBody
+                    )
+                }
+            }
+            
             // 強制再描画
             refreshID = UUID()
         } catch {
@@ -959,6 +971,9 @@ final class TaskViewModel {
             let duration = task.actualEndTime!.timeIntervalSince(startTime)
             task.actualDuration = Int(duration / 60) // 分単位に変換
         }
+        
+        // 予約されている通知をキャンセル
+        NotificationManager.shared.cancelNotification()
         
         do {
             try modelContext.save()

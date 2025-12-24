@@ -305,6 +305,12 @@ struct AppText {
         static var isCompleted: String {
             LanguageManager.shared.language == .japanese ? "終了済み" : "Completed"
         }
+        static var actualResult: String {
+            LanguageManager.shared.language == .japanese ? "実績" : "Actual Result"
+        }
+        static var recordActualTime: String {
+            LanguageManager.shared.language == .japanese ? "実績時間を記録する" : "Record Actual Time"
+        }
     }
     
     // MARK: - Add Task
@@ -367,8 +373,40 @@ struct AppText {
     // MARK: - Links
     struct Links {
         static let privacyPolicyURL = URL(string: "https://docs.google.com/document/d/1LTNKbmoTXjPnpDQqd9WnUJLS4a53JT9VbO2fjWjUJ-4/edit?usp=sharing")!
-        static let supportFormURL = URL(string: "https://docs.google.com/forms/d/e/1FAIpQLScpUGzJnZzknh4T9q-Rs0AKxg5Mv7tVyXxr3fcT50YQ-SjsLw/viewform?usp=header")!
+        static let bottleMailURL = URL(string: "https://docs.google.com/forms/d/e/1FAIpQLScpUGzJnZzknh4T9q-Rs0AKxg5Mv7tVyXxr3fcT50YQ-SjsLw/viewform?usp=header")!
         static let supportEmail = "dev.app.ynosuke@gmail.com"
+    }
+    
+    // MARK: - Notification
+    struct Notification {
+        static var timerEndTitle: String {
+            LanguageManager.shared.language == .japanese ? "時間です！🏁" : "Time's up! 🏁"
+        }
+        static var timerEndBody: String {
+            LanguageManager.shared.language == .japanese ? "お疲れ様でした！フォーカスセッション完了です。" : "Great job! Focus session complete."
+        }
+    }
+    
+    // MARK: - Settings Support
+    struct SettingsSupport {
+        static var supportAndFeedback: String {
+            LanguageManager.shared.language == .japanese ? "サポート・フィードバック" : "Support & Feedback"
+        }
+        static var sendBottleMail: String {
+            LanguageManager.shared.language == .japanese ? "フィードバックを送る" : "Send us feedback"
+        }
+        static var bottleMailCaption: String {
+            LanguageManager.shared.language == .japanese ? "バグ報告・改善要望" : "Bug reports & Feature requests"
+        }
+        static var contactUs: String {
+            LanguageManager.shared.language == .japanese ? "お問い合わせ" : "Contact Us"
+        }
+        static var openMailApp: String {
+            LanguageManager.shared.language == .japanese ? "メールアプリを開く" : "Open Mail App"
+        }
+        static var copyEmailAddress: String {
+            LanguageManager.shared.language == .japanese ? "メールアドレスをコピー" : "Copy Email Address"
+        }
     }
 }
 

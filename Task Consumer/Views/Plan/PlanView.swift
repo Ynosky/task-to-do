@@ -12,7 +12,6 @@ struct PlanView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var viewModel: TaskViewModel
     @State private var selectedDate = Date()
-    @State private var showingTaskEdit = false
     @State private var showingAddTask = false
     @State private var showingCalendar = false
     @State private var editingTask: TaskItem?
@@ -123,7 +122,6 @@ struct PlanView: View {
                         },
                         onTaskEdit: { task in
                             editingTask = task
-                            showingTaskEdit = true
                         }
                     )
                     .padding(.horizontal, 16)
@@ -144,17 +142,16 @@ struct PlanView: View {
                 }
             )
         }
-        .sheet(isPresented: $showingTaskEdit) {
+        .sheet(item: $editingTask) { task in
             TaskEditView(
-                task: editingTask,
+                task: task,
                 date: selectedDate,
                 viewModel: viewModel,
                 initialParentTask: nil,
-                onSave: { task in
-                    handleTaskSave(task)
+                onSave: { savedTask in
+                    handleTaskSave(savedTask)
                 },
                 onDismiss: {
-                    showingTaskEdit = false
                     editingTask = nil
                 }
             )

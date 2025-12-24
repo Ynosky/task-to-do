@@ -25,10 +25,10 @@ struct TaskEditView: View {
     @State private var availableParents: [TaskItem] = []
     
     // 実績時間編集用のState変数
-    @State private var actualStartTime: Date = Date()
-    @State private var actualEndTime: Date = Date()
-    @State private var hasActualStartTime: Bool = false // 開始しているか
-    @State private var hasActualEndTime: Bool = false   // 終了しているか
+    @State private var editingActualStartTime: Date = Date()
+    @State private var editingActualEndTime: Date = Date()
+    @State private var hasActualTime: Bool = false // 実績時間を記録するか
+    @State private var showActualTimeSection: Bool = false // 実績時間セクションを表示するか
     
     private let durationOptions = Array(stride(from: 5, through: 240, by: 5)) // 5分から240分まで5分刻み
     
@@ -66,15 +66,32 @@ struct TaskEditView: View {
                     }
                 }
                 
-                // 実績時間編集セクション（開始済みの場合のみ表示）
-                if hasActualStartTime {
-                    Section(AppText.TaskEdit.actualTime) {
-                        DatePicker(AppText.TaskEdit.startTime, selection: $actualStartTime)
+                // 実績時間編集セクション（完了済み、または開始済みの場合に表示）
+                if showActualTimeSection {
+                    Section(header: Text(AppText.TaskEdit.actualResult)) {
+                        Toggle(AppText.TaskEdit.recordActualTime, isOn: $hasActualTime)
+                            .onChange(of: hasActualTime) { oldValue, newValue in
+                                // トグルがONになった瞬間、値がnilの場合は初期値を設定
+                                if newValue && oldValue == false {
+                                    if let task = task {
+                                        // 既存の実績時間がない場合、計画時間を初期値として使用
+                                        if task.actualStartTime == nil {
+                                            editingActualStartTime = task.currentStartTime ?? task.date
+                                        }
+                                        if task.actualEndTime == nil {
+                                            editingActualEndTime = task.currentEndTime ?? Date()
+                                        }
+                                    }
+                                }
+                            }
                         
-                        Toggle(AppText.TaskEdit.isCompleted, isOn: $hasActualEndTime)
-                        
-                        if hasActualEndTime {
-                            DatePicker(AppText.TaskEdit.endTime, selection: $actualEndTime)
+                        if hasActualTime {
+                            VStack(alignment: .leading, spacing: 12) {
+                                DatePicker(AppText.TaskEdit.startTime, selection: $editingActualStartTime, displayedComponents: [.date, .hourAndMinute])
+                                
+                                DatePicker(AppText.TaskEdit.endTime, selection: $editingActualEndTime, displayedComponents: [.date, .hourAndMinute])
+                            }
+                            .padding(.vertical, 4)
                         }
                     }
                 }
@@ -114,25 +131,39 @@ struct TaskEditView: View {
             parentTask = task.parent
             
             // 実績情報の読み込み
-            if let start = task.actualStartTime {
-                actualStartTime = start
-                hasActualStartTime = true
-            } else {
-                hasActualStartTime = false
-            }
+            // 完了済みタスク、または開始済みタスクの場合は実績時間セクションを表示
+            let isCompleted = task.isCompleted
             
-            if let end = task.actualEndTime {
-                actualEndTime = end
-                hasActualEndTime = true
+            // 完了済みの場合、または開始済みの場合に実績時間セクションを表示
+            if isCompleted || task.actualStartTime != nil {
+                showActualTimeSection = true
+                
+                // 実績時間が両方とも記録されているかチェック
+                let hasBothTimes = task.actualStartTime != nil && task.actualEndTime != nil
+                hasActualTime = hasBothTimes
+                
+                if let start = task.actualStartTime {
+                    editingActualStartTime = start
+                } else {
+                    // 完了済みだが開始時間がない場合、デフォルト値を設定（計画開始時間またはその日の開始時刻）
+                    editingActualStartTime = task.currentStartTime ?? task.date
+                }
+                
+                if let end = task.actualEndTime {
+                    editingActualEndTime = end
+                } else {
+                    // 終了時間がない場合、デフォルト値を設定（計画終了時間または現在時刻）
+                    editingActualEndTime = task.currentEndTime ?? Date()
+                }
             } else {
-                // 未終了の場合は現在時刻などを初期値に
-                actualEndTime = Date()
-                hasActualEndTime = false
+                // 未完了・未開始の場合は非表示
+                showActualTimeSection = false
+                hasActualTime = false
             }
         } else {
             // 新規作成時は初期化
-            hasActualStartTime = false
-            hasActualEndTime = false
+            showActualTimeSection = false
+            hasActualTime = false
         }
     }
     
@@ -187,22 +218,23 @@ struct TaskEditView: View {
                 existingTask.parent = parentTask
             }
             
-            // 実績情報の反映（開始済みの場合）
-            if hasActualStartTime {
-                existingTask.actualStartTime = actualStartTime
-                
-                if hasActualEndTime {
-                    existingTask.actualEndTime = actualEndTime
+            // 実績情報の反映（実績時間セクションが表示されている場合）
+            if showActualTimeSection {
+                if hasActualTime {
+                    // トグルがONの場合、開始時間と終了時間の両方を設定
+                    existingTask.actualStartTime = editingActualStartTime
+                    existingTask.actualEndTime = editingActualEndTime
                     existingTask.isCompleted = true
                     
                     // 実績所要時間(分)の再計算
-                    let duration = actualEndTime.timeIntervalSince(actualStartTime)
+                    let duration = editingActualEndTime.timeIntervalSince(editingActualStartTime)
                     existingTask.actualDuration = max(0, Int(duration / 60))
                 } else {
-                    // 終了時間がない状態に戻す（実行中に戻す）
+                    // トグルがOFFの場合、両方をnilにリセット
+                    existingTask.actualStartTime = nil
                     existingTask.actualEndTime = nil
-                    existingTask.isCompleted = false
                     existingTask.actualDuration = nil
+                    // 完了状態は維持（チェックボックスで管理されるため）
                 }
             }
             

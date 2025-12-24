@@ -12,6 +12,13 @@ import SwiftData
 struct TaskToDoApp: App {
     @State private var localizationID = UUID()
     
+    init() {
+        // 通知許可をリクエスト
+        NotificationManager.shared.requestAuthorization()
+        // デリゲートを設定
+        UNUserNotificationCenter.current().delegate = NotificationManager.shared
+    }
+    
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             TaskItem.self,
