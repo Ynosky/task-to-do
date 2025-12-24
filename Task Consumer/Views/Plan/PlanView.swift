@@ -176,6 +176,8 @@ struct PlanView: View {
             viewModel.selectedDate = newDate
             loadParentTasks()
             refreshSchedule()
+            // 日付変更時の触覚フィードバック
+            HapticManager.shared.impact(style: .light)
         }
         .onChange(of: viewModel.refreshTrigger) { _, _ in
             loadParentTasks()

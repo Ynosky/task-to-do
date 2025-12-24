@@ -38,6 +38,12 @@ struct DoTopCard: View {
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
+            .onChange(of: selectedParentTask?.id) { oldValue, newValue in
+                // タスクカード切り替え時の触覚フィードバック
+                if oldValue != newValue && newValue != nil {
+                    HapticManager.shared.impact(style: .light)
+                }
+            }
         }
     }
 }
